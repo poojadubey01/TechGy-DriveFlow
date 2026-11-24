@@ -1,25 +1,67 @@
 {
   "expo": {
-    "name": "DriveFlow-App",
-    "slug": "DriveFlow-App",
+    "name": "DriveFlow",
+    "slug": "driveflow",
+    "scheme": "driveflow",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.techgylink.driveflow",
+      "associatedDomains": [
+        "applinks:driveflow.app"
+      ]
     },
     "android": {
+      "package": "com.techgylink.driveflow",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#E9ECFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "driveflow.app",
+              "pathPrefix": "/p/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
+      "bundler": "metro",
+      "output": "single",
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-font",
+      "expo-image",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo-blue.png",
+          "imageWidth": 96,
+          "resizeMode": "contain",
+          "backgroundColor": "#F3F4F8"
+        }
+      ],
+      "expo-sharing",
+      "expo-asset"
+    ]
   }
 }
