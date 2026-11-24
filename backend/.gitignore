@@ -1,0 +1,7 @@
+node_modules/
+dist/
+# Local embedded database (PGlite)
+.data/
+.env
+.env.*.local
+*.log
