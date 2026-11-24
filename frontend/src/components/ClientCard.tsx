@@ -35,7 +35,7 @@ export function ClientCard({ client, index, onPress }: Props) {
           </Text>
         </View>
         <View className="h-[32px] justify-center rounded-full border-[1.5px] border-white/70 px-3">
-          <Text className="font-jk-semibold text-[12px] text-white">{client.photos} photos</Text>
+          <Text className="font-jk-semibold text-[12px] text-white">{client.photos} {client.photos === 1 ? 'photo' : 'photos'}</Text>
         </View>
       </LinearGradient>
     </PressableScale>

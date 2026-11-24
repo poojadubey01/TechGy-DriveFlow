@@ -5,8 +5,19 @@ import { type Config, loadConfig } from '../src/config.js';
 import { createDatabase } from '../src/db/client.js';
 import { ConsoleEmail } from '../src/services/email.js';
 import type { MockDriveSource } from '../src/services/drive/mock.js';
+import type { PushMessage, PushResult, PushSender } from '../src/services/push.js';
 
-export type TestApp = { app: FastifyInstance; email: ConsoleEmail; mockDrive: MockDriveSource; close: () => Promise<void> };
+/** Records pushes instead of sending them; tokens in `gone` answer DeviceNotRegistered. */
+export class FakePush implements PushSender {
+  readonly sent: PushMessage[] = [];
+  readonly gone = new Set<string>();
+  async send(messages: PushMessage[]): Promise<PushResult[]> {
+    this.sent.push(...messages);
+    return messages.map((m) => ({ to: m.to, ok: !this.gone.has(m.to), deviceGone: this.gone.has(m.to) }));
+  }
+}
+
+export type TestApp = { app: FastifyInstance; email: ConsoleEmail; mockDrive: MockDriveSource; push: FakePush; close: () => Promise<void> };
 
 /** A full app on a fresh in-memory Postgres, with the console outbox and the mock Drive. */
 export async function makeApp(overrides: Partial<Config> = {}): Promise<TestApp> {
@@ -14,11 +25,13 @@ export async function makeApp(overrides: Partial<Config> = {}): Promise<TestApp>
   const database = createDatabase({ pgliteDir: 'memory' });
   await database.migrate();
   const email = new ConsoleEmail();
-  const app = await buildApp({ config, database, email });
+  const push = new FakePush();
+  const app = await buildApp({ config, database, email, push });
   await app.ready();
   return {
     app,
     email,
+    push,
     mockDrive: app.ctx.drive.mock!,
     close: async () => {
       await app.close();

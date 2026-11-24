@@ -70,7 +70,7 @@ export default function Preview() {
       <View className="px-5 pb-1" style={{ paddingTop: insets.top + 10 }}>
         <TopBar
           title={deck.title}
-          caption={`${client.name} · ${getTemplate(template).name}`}
+          caption={client.name}
           right={
             <DeckMenu
               onDownload={download}
@@ -83,7 +83,7 @@ export default function Preview() {
         <View className="mt-3 flex-row items-center justify-center gap-2">
           <FileText size={14} color={colors.muted} strokeWidth={2} />
           <Text className="font-jk-semibold text-[13px] text-muted">
-            Page {page} of {slides.length}
+            Page {page} of {slides.length} · {getTemplate(template).name}
           </Text>
         </View>
       </View>

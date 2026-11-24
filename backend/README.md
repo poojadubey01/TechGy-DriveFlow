@@ -32,7 +32,7 @@ The API runs at **http://localhost:4000**. Check it with `GET /health`.
 | --- | --- |
 | `npm run dev` | Starts the API and restarts it on every change |
 | `npm run build` then `npm start` | Production build (`dist/`) and start |
-| `npm test` | 62 tests, each file on its own throwaway database |
+| `npm test` | 75 tests, each file on its own throwaway database |
 | `npm run typecheck` | TypeScript check |
 | `npm run seed` | Creates or resets the demo account (development only) |
 | `npm run db:generate` | Turns changes in `src/db/schema.ts` into a new SQL migration in `drizzle/` |
@@ -51,6 +51,8 @@ Settings are environment variables; [.env.example](.env.example) lists them all.
 | Email codes | Printed in the server log and listed at `GET /dev/outbox` | [Resend](https://resend.com): `EMAIL_PROVIDER=resend`, `RESEND_API_KEY` |
 | Google sign-in | `POST /auth/google` with `idToken: "dev:<email>:<Name>"` | Google ID tokens checked against `GOOGLE_CLIENT_IDS` |
 | Google Drive | `POST /drive/connect` with `{ "mock": true }`: a "Projects" folder with the 4 sample clients and the app's own photos | Drive v3, read-only scope, with `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` |
+| Chat assistant | A built-in rule-based reader (client names, deck type, slide count, photo kind, template) | Claude (`claude-opus-5-5`) with `ANTHROPIC_API_KEY` |
+| Push notifications | Sent through Expo's push service as soon as a phone registers; no key needed | Same; optional `EXPO_ACCESS_TOKEN` if push security is on for your Expo project |
 
 The real Google and Resend code is written but **hasn't been tested against live Google or Resend yet**, because there are no keys. Test it once you add keys.
 
@@ -89,6 +91,15 @@ The real Google and Resend code is written but **hasn't been tested against live
   - Each visit records the device, seconds per slide (capped, so it can't be inflated) and PDF downloads.
   - The owner gets a "Client opened your deck" notification. Repeat visits within 30 minutes update the same notification.
   - "Stop sharing" makes the link answer `410`. "New link" makes the old code stop working.
+- **Background Drive sync:** every `SYNC_INTERVAL_MINUTES` (default 30), each connected folder is synced again, so new photos and "new photos" notifications arrive without anyone opening the app. The app also has **Sync now** in Profile.
+- **Push notifications:** each phone registers an Expo push token (`POST /me/push-tokens`), tied to its sign-in.
+  - Every in-app notification (deck ready, client opened a deck, new Drive photos) is also pushed to that person's phones, unless they turned that kind off.
+  - Signing out, or resetting the password, stops pushes to that phone. Uninstalled phones are removed automatically.
+- **Chat assistant** (`POST /assistant/understand`): reads a typed request like "a 10-slide proposal for Highrize with night shots in the bold template" into client, deck type, slide count, photos and template, so the chat can skip those questions.
+  - With `ANTHROPIC_API_KEY` set, it uses Claude (`claude-opus-5-5`, low effort, structured JSON output).
+  - Server-side fallbacks are on: if the model declines, the API retries on a fallback model in the same call.
+  - The answer is checked before use: only the account's own client ids and slide counts from 4 to 40 are accepted.
+  - Without a key, or if Claude can't be reached, the built-in rule-based reader answers instead.
 - **Errors** always look like `{ "error": { "code": "...", "message": "..." } }`. The message is written to be shown in the app as is. Validation errors also list `fields`.
 
 ## API
@@ -115,6 +126,8 @@ Photo URLs in responses are paths like `/photos/<id>/image`. The app adds the AP
 | `DELETE /me` | `{ email }` (typed to confirm). Deletes everything |
 | `GET`, `PATCH /me/settings` | `defaultSlides` (8/12/15), `defaultTemplate`, `notifyReady`, `notifyViews`, `notifyPhotos` |
 | `GET`, `PATCH /me/brand` | `{ on, name, accent }` → also `displayName` |
+| `POST /me/push-tokens` | `{ token, platform }` registers this phone for push notifications |
+| `DELETE /me/push-tokens` | `{ token }` stops pushes to a phone |
 | `GET /notifications` | `{ items, unread }` |
 | `POST /notifications/:id/read`, `POST /notifications/read-all` | Mark notifications as read |
 | **Google Drive** | |
@@ -141,6 +154,8 @@ Photo URLs in responses are paths like `/photos/<id>/image`. The app adds the AP
 | `GET`, `PATCH /decks/:id/share` | `{ active, allowPdf }` |
 | `POST /decks/:id/share/new-link` | New share code; the old one stops working |
 | `GET /decks/:id/activity` | `{ opens, totalSeconds, downloads, perSlide, visits }` |
+| **Chat** | |
+| `POST /assistant/understand` | `{ text, clientId? }` → `{ source, clientId, deckType, slides, photoChoice, template, reply }` |
 | **Client view** (public) | |
 | `GET /public/decks/:shareId` | Deck for the share link (title, sender, brand, slides) |
 | `GET /public/decks/:shareId/photos/:photoId` | A photo on that deck |
@@ -173,7 +188,5 @@ It runs anywhere that runs Node, such as Render, Railway, Fly.io or a VM.
 
 ## Not built yet
 
-- Push notifications. In-app notifications are built.
 - Team workspaces.
 - Server-side PDF rendering. The app builds the PDF itself.
-- Background (scheduled) Drive syncs.

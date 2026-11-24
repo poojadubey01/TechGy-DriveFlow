@@ -44,9 +44,10 @@ export default function Creating() {
   const deckId = deck?.id;
   useEffect(() => {
     if (!deckId) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const finish = () => {
       haptic.success();
-      router.replace({ pathname: '/ready', params: { deck: deckId } });
+      timer = setTimeout(() => router.replace({ pathname: '/ready', params: { deck: deckId } }), 650);
     };
     // Runs once per build; cancelled if the user leaves, so it can never navigate from a dead screen.
     progress.set(
@@ -55,7 +56,10 @@ export default function Creating() {
         if (done) scheduleOnRN(finish);
       }),
     );
-    return () => cancelAnimation(progress);
+    return () => {
+      cancelAnimation(progress);
+      if (timer) clearTimeout(timer);
+    };
   }, [deckId, progress]);
 
   // Bridge the UI-thread progress to a whole-number percent for the text (only 100 updates in total).

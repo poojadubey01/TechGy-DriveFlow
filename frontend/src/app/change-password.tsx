@@ -34,6 +34,17 @@ export default function ChangePassword() {
     );
   }
 
+  // Google-only accounts have no DriveFlow password (a link or old screen can still lead here).
+  if (user.hasPassword === false) {
+    return (
+      <PageShell title="Change password" footer={<SubmitButton label="Back" loadingLabel="" loading={false} onPress={() => router.back()} />}>
+        <View className="items-center pt-10">
+          <Text className="text-center font-jk text-[15px] leading-[22px] text-ink-soft">Your account uses Google sign-in, so there’s no DriveFlow password to change. Manage it in your Google account.</Text>
+        </View>
+      </PageShell>
+    );
+  }
+
   if (done) {
     return (
       <PageShell title="Change password" footer={<SubmitButton label="Done" loadingLabel="" loading={false} onPress={() => router.back()} />}>

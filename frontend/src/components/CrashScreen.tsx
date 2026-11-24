@@ -10,6 +10,10 @@ import { SubmitButton, TextLink } from './auth/Form';
 
 type Props = { error: Error; retry: () => Promise<void> };
 
+/** Times "Try again" was pressed recently (kept across crash-screen remounts). */
+const recentRetries: number[] = [];
+const retriedTooOften = () => recentRetries.filter((t) => Date.now() - t < 30_000).length >= 2;
+
 function Body({ error, retry }: Props) {
   const insets = useSafeAreaInsets();
   return (
@@ -30,10 +34,24 @@ function Body({ error, retry }: Props) {
         ) : null}
       </View>
       <View className="gap-2 px-6">
-        <SubmitButton label="Try again" loadingLabel="" loading={false} onPress={() => void retry()} />
-        <View className="items-center">
-          <TextLink label="Go to start" muted onPress={() => router.replace('/')} />
-        </View>
+        {retriedTooOften() ? (
+          <SubmitButton label="Go to start" loadingLabel="" loading={false} onPress={() => router.replace('/')} />
+        ) : (
+          <>
+            <SubmitButton
+              label="Try again"
+              loadingLabel=""
+              loading={false}
+              onPress={() => {
+                recentRetries.push(Date.now());
+                void retry();
+              }}
+            />
+            <View className="items-center">
+              <TextLink label="Go to start" muted onPress={() => router.replace('/')} />
+            </View>
+          </>
+        )}
       </View>
     </View>
   );

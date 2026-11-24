@@ -52,6 +52,12 @@
       "expo-font",
       "expo-image",
       [
+        "expo-notifications",
+        {
+          "color": "#0022FF"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/logo-blue.png",

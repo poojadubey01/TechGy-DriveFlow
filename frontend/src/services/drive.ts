@@ -8,7 +8,7 @@
 import { api } from '@/api/client';
 import type { ApiDrive, ApiDriveFolder } from '@/api/types';
 import { loadClients } from '@/data/clients';
-import { driveFromApi, setDriveState } from '@/data/session';
+import { driveFromApi, getSession, setDriveState } from '@/data/session';
 import { relativeTime } from '@/data/store';
 
 export type DriveFolder = {
@@ -50,6 +50,17 @@ export async function syncDrive(): Promise<SyncResult> {
   setDriveState(driveFromApi(res.drive));
   await loadClients();
   return res.result;
+}
+
+/**
+ * Picks up a background sync the server did while the app was away: when the folder was synced
+ * since we last looked, the client list is reloaded. Quiet on errors (it runs when Home opens).
+ */
+export async function refreshDrive() {
+  const before = getSession().drive.lastSyncAt;
+  const d = await api<ApiDrive>('/drive');
+  setDriveState(driveFromApi(d));
+  if (d.folder && d.lastSync !== before) await loadClients();
 }
 
 export async function disconnectDrive() {

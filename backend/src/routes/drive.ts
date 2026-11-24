@@ -166,7 +166,7 @@ export async function driveRoutes(app: FastifyInstance, ctx: Ctx) {
     const { user } = me(req);
     const conn = await connection(user.id);
     if (!conn.folderId) throw badRequest('drive_folder_missing', 'Choose your projects folder first.');
-    const result = await syncDrive(db, user.id, ctx.drive.sourceFor(conn), { id: conn.folderId, name: conn.folderName ?? 'Drive' }, !conn.lastSyncAt);
+    const result = await syncDrive(ctx, user.id, ctx.drive.sourceFor(conn), { id: conn.folderId, name: conn.folderName ?? 'Drive' }, !conn.lastSyncAt);
     return { result, drive: await driveState(db, user.id) };
   });
 

@@ -16,6 +16,7 @@ import { CrashScreen } from '@/components/CrashScreen';
 import { useSession } from '@/data/session';
 import { goAfterSignIn, resetTo } from '@/lib/nav';
 import { restoreSession } from '@/services/auth';
+import { usePushTaps } from '@/services/push';
 import { colors } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -41,6 +42,7 @@ function AuthGuard() {
   const ready = !!useRootNavigationState()?.key && status === 'ready';
   const first = segments[0] ?? '';
   const launched = useRef(false);
+  usePushTaps();
   useEffect(() => {
     if (ready && !user && SIGNED_IN_ONLY.has(first)) resetTo('/');
   }, [first, ready, user]);

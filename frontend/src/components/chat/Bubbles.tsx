@@ -23,7 +23,7 @@ export function AiBubble({ children, extra }: { children: ReactNode; extra?: Rea
     <Animated.View entering={enter.fade()} style={{ alignSelf: 'flex-start', maxWidth: '92%' }}>
       <View className="flex-row items-start gap-2.5">
         <AiAvatar />
-        <View className="flex-shrink rounded-[22px] rounded-bl-lg bg-card px-4 py-3.5" style={{ boxShadow: shadow.card }}>
+        <View className="flex-shrink rounded-[22px] rounded-bl-lg bg-card px-4 py-3.5" style={{ boxShadow: shadow.card }} accessibilityLiveRegion="polite">
           <Text className="font-jk text-[15px] leading-[22px] text-ink">{children}</Text>
           {extra}
         </View>

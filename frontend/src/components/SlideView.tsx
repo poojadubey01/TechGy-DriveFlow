@@ -56,10 +56,12 @@ export function SlideView({ template, source, title, eyebrow, index, total, bran
           alignItems: 'center',
           gap: 5 * u,
           backgroundColor: colors.white,
+          // Long brand names stop before the page number on the right.
+          maxWidth: '64%',
         }}
       >
         <View style={{ width: 6 * u, height: 6 * u, borderRadius: 3 * u, backgroundColor: accent }} />
-        <Text style={{ fontFamily: fonts.semibold, fontSize: 10.5 * u, color: accent }} numberOfLines={1}>
+        <Text style={{ fontFamily: fonts.semibold, fontSize: 10.5 * u, color: accent, flexShrink: 1 }} numberOfLines={1}>
           {brand.name}
         </Text>
       </View>

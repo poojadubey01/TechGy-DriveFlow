@@ -1,6 +1,7 @@
 import { buildApp } from './app.js';
 import { loadConfig, loadEnvFile } from './config.js';
 import { createDatabase } from './db/client.js';
+import { startAutoSync } from './services/autosync.js';
 
 loadEnvFile();
 const config = loadConfig();
@@ -12,9 +13,11 @@ if (config.DEV_MOCKS) app.log.warn('DEV_MOCKS is on: mock Google sign-in, sample
 if (!config.DATABASE_URL) app.log.info(`Using the embedded database in ${config.PGLITE_DIR}`);
 
 await app.listen({ host: config.HOST, port: config.PORT });
+const stopAutoSync = startAutoSync(app.ctx, config.SYNC_INTERVAL_MINUTES, app.log);
 
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down`);
+  stopAutoSync();
   await app.close();
   await database.close();
   process.exit(0);

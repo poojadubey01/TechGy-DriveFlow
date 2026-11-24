@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft, FolderOpen, Plus } from 'lucide-react-native';
+import { useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -26,6 +27,7 @@ export default function ClientDetails() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const allDecks = useDecks();
+  const [pastHero, setPastHero] = useState(false);
 
   if (!client && (status === 'loading' || status === 'idle')) {
     return (
@@ -60,9 +62,17 @@ export default function ClientDetails() {
 
   return (
     <View className="flex-1 bg-canvas">
-      <StatusBar style="light" />
+      <StatusBar style={pastHero ? 'dark' : 'light'} />
       <FadeEdges start={0} end={insets.bottom + 96}>
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 110 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 110 }}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={64}
+        onScroll={(e) => {
+          const past = e.nativeEvent.contentOffset.y > heroH - insets.top - 40;
+          if (past !== pastHero) setPastHero(past);
+        }}
+      >
         {/* Hero */}
         <View style={{ height: heroH }}>
           <Image source={client.cover} style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }} contentFit="cover" transition={200} accessible={false} />

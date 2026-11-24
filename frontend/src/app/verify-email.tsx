@@ -48,9 +48,11 @@ export default function VerifyEmail() {
     }
   };
 
+  const [resending, setResending] = useState(false);
   const resend = async () => {
-    if (timer.left > 0) return;
+    if (timer.left > 0 || resending) return;
     setError(null);
+    setResending(true);
     try {
       await resendCode(email, 'verify');
       setResent(true);
@@ -58,6 +60,8 @@ export default function VerifyEmail() {
       haptic.tap();
     } catch (e) {
       setError(e instanceof AuthError ? e.message : 'Could not send a new code. Try again.');
+    } finally {
+      setResending(false);
     }
   };
 

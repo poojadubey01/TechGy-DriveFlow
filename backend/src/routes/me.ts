@@ -3,10 +3,11 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { type Ctx, me, parse, requireAuth } from '../context.js';
-import { brandKits, driveConnections, notifications, users, userSettings } from '../db/schema.js';
+import { brandKits, driveConnections, notifications, pushTokens, users, userSettings } from '../db/schema.js';
 import { BRAND_NAME_MAX, SLIDE_CHOICES, TEMPLATE_IDS } from '../domain/catalog.js';
 import { badRequest } from '../lib/errors.js';
 import { getBrand, getSettings, publicBrand, publicSettings, publicUser } from '../services/account.js';
+import { isExpoPushToken } from '../services/push.js';
 import { driveState } from './drive.js';
 
 export async function meRoutes(app: FastifyInstance, ctx: Ctx) {
@@ -115,6 +116,32 @@ export async function meRoutes(app: FastifyInstance, ctx: Ctx) {
       .where(eq(brandKits.userId, user.id))
       .returning();
     return publicBrand(b!, user);
+  });
+
+  /* ---------------------------------------------------- push notifications */
+
+  /** Registers this phone for push notifications (an Expo push token), tied to this sign-in. */
+  app.post('/me/push-tokens', async (req, reply) => {
+    const { user, sessionId } = me(req);
+    const body = parse(
+      z.object({
+        token: z.string().max(200).refine(isExpoPushToken, 'That isn’t an Expo push token.'),
+        platform: z.enum(['ios', 'android']),
+      }),
+      req.body,
+    );
+    await db
+      .insert(pushTokens)
+      .values({ userId: user.id, sessionId, token: body.token, platform: body.platform })
+      .onConflictDoUpdate({ target: pushTokens.token, set: { userId: user.id, sessionId, platform: body.platform } });
+    return reply.code(204).send();
+  });
+
+  app.delete('/me/push-tokens', async (req, reply) => {
+    const { user } = me(req);
+    const body = parse(z.object({ token: z.string().max(200) }), req.body);
+    await db.delete(pushTokens).where(and(eq(pushTokens.token, body.token), eq(pushTokens.userId, user.id)));
+    return reply.code(204).send();
   });
 
   /* ------------------------------------------------------- notifications */

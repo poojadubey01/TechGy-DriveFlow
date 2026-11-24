@@ -20,6 +20,7 @@ import type { GlowBlob } from '@/components/glow/types';
 import { IconButton, RoundAction } from '@/components/ui/Button';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { loadDecks, loadNotifications, useDecks, useUnreadCount } from '@/data/app';
+import { refreshDrive } from '@/services/drive';
 import { type DeckType, useClients } from '@/data/clients';
 import { firstName, initials, useSession } from '@/data/session';
 import { enter } from '@/theme/motion';
@@ -54,6 +55,7 @@ export default function Home() {
     useCallback(() => {
       loadDecks().catch(() => undefined);
       loadNotifications().catch(() => undefined);
+      refreshDrive().catch(() => undefined);
     }, []),
   );
   const driveReady = drive.connected && !!drive.folder;
@@ -96,7 +98,7 @@ export default function Home() {
               Who are we{'\n'}creating for?
             </Animated.Text>
             <View className="mt-2 h-[30px] justify-center rounded-full bg-brand px-3.5">
-              <Text className="font-jk-semibold text-[13px] text-white">{clients.length} clients</Text>
+              <Text className="font-jk-semibold text-[13px] text-white">{clients.length} {clients.length === 1 ? 'client' : 'clients'}</Text>
             </View>
           </View>
         </View></Animated.View>

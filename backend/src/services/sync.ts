@@ -1,10 +1,9 @@
 import { and, eq, inArray, isNull, notInArray } from 'drizzle-orm';
 
-import type { Db } from '../db/client.js';
 import { clients, driveConnections, photos } from '../db/schema.js';
 import { kindFromText } from '../domain/slides.js';
 import type { DriveSource } from './drive/index.js';
-import { notify } from './notify.js';
+import { notify, type NotifyDeps } from './notify.js';
 
 export type SyncResult = { clients: number; photos: number; newPhotos: number };
 
@@ -13,7 +12,8 @@ export type SyncResult = { clients: number; photos: number; newPhotos: number };
  * client's photos. Folders or photos that disappeared are marked removed (old decks keep working
  * where they can). Kinds set by hand are kept. Sends a "new photos" notification after the first sync.
  */
-export async function syncDrive(db: Db, userId: string, source: DriveSource, folder: { id: string; name: string }, firstSync: boolean): Promise<SyncResult> {
+export async function syncDrive(deps: NotifyDeps, userId: string, source: DriveSource, folder: { id: string; name: string }, firstSync: boolean): Promise<SyncResult> {
+  const { db } = deps;
   const subfolders = await source.listFolders(folder.id);
   const images = await Promise.all(subfolders.map((f) => source.listImages(f.id)));
 
@@ -87,7 +87,7 @@ export async function syncDrive(db: Db, userId: string, source: DriveSource, fol
 
   if (!firstSync && result.newPhotos > 0) {
     const one = newByClient.length === 1 ? newByClient[0]! : null;
-    await notify(db, userId, {
+    await notify(deps, userId, {
       kind: 'photos',
       title: `${result.newPhotos} new ${result.newPhotos === 1 ? 'photo' : 'photos'} in Google Drive`,
       body: one ? `Added to ${folder.name} / ${one.name}` : `Added to ${newByClient.length} clients in ${folder.name}`,

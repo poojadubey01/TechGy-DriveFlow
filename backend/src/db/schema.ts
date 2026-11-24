@@ -230,6 +230,28 @@ export const notifications = pgTable(
   (t) => [index('notifications_user_created_idx').on(t.userId, t.createdAt)],
 );
 
+/**
+ * Phones that receive push notifications (Expo push tokens). Tied to the signed-in session, so
+ * signing out — or a password reset that signs out every device — stops pushes to that phone.
+ */
+export const pushTokens = pgTable(
+  'push_tokens',
+  {
+    id: id(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    token: text('token').notNull().unique(),
+    /** 'ios' | 'android'. */
+    platform: text('platform').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('push_tokens_user_idx').on(t.userId)],
+);
+
 /* ----------------------------------------------------------------- support */
 
 export const feedback = pgTable('feedback', {

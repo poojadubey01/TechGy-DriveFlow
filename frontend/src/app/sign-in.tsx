@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { AuthShell } from '@/components/auth/AuthShell';
-import { GoogleButton, OrDivider, SubmitButton, TextField, type TextInputRef, TextLink } from '@/components/auth/Form';
+import { GoogleButton, GoogleTermsNotice, OrDivider, SubmitButton, TextField, type TextInputRef, TextLink } from '@/components/auth/Form';
 import { haptic } from '@/hooks/haptics';
 import { useMounted } from '@/hooks/useMounted';
 import { goAfterSignIn } from '@/lib/nav';
@@ -126,6 +126,7 @@ export default function SignIn() {
         <SubmitButton label="Sign in" loadingLabel="Signing in…" loading={loading} onPress={submit} />
         <OrDivider />
         <GoogleButton onPress={withGoogle} loading={google} />
+        <GoogleTermsNotice />
       </View>
     </AuthShell>
   );

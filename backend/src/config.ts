@@ -46,6 +46,15 @@ function schema(env: NodeJS.ProcessEnv) {
     /** Set when running behind a proxy/load balancer, so rate limits see the real client IP. */
     TRUST_PROXY: bool(false),
     SESSION_DAYS: z.coerce.number().int().min(1).max(365).default(60),
+    /** Background Drive sync: re-read each connected folder this often (minutes). 0 turns it off. */
+    /** Push notifications to phones through Expo's push service. */
+    PUSH_ENABLED: bool(true),
+    /** Optional Expo access token (if push security is turned on for the Expo project). */
+    EXPO_ACCESS_TOKEN: z.string().optional(),
+    /** Claude API key for the chat assistant. Without it the chat uses the built-in rule-based reader. */
+    ANTHROPIC_API_KEY: z.string().optional(),
+    ASSISTANT_MODEL: z.string().default('claude-opus-5-5'),
+    SYNC_INTERVAL_MINUTES: z.coerce.number().int().min(0).max(1440).default(30),
     /** 32 random bytes, base64. Encrypts Google tokens and signs email codes. */
     TOKEN_ENCRYPTION_KEY: z.string().optional(),
     EMAIL_PROVIDER: z.enum(['console', 'resend']).default('console'),

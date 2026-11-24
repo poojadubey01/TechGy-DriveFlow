@@ -52,18 +52,35 @@ export default function ResetPassword() {
     }
   };
 
+  const [resending, setResending] = useState(false);
   const resend = async () => {
-    if (timer.left > 0) return;
+    if (timer.left > 0 || resending) return;
+    setResending(true);
     try {
       await resendCode(email, 'reset');
       timer.restart();
       haptic.tap();
     } catch (e) {
       setErrors({ form: e instanceof AuthError ? e.message : 'Could not send a new code. Try again.' });
+    } finally {
+      setResending(false);
     }
   };
 
   const toSignIn = () => router.dismissTo({ pathname: '/sign-in', params: email ? { email } : {} });
+
+  // Opened without an email (an old link): start again from Forgot password.
+  if (!email) {
+    return (
+      <AuthShell
+        title="Reset your password"
+        subtitle="Start from Forgot password so we know which email to send the code to."
+        footer={<SubmitButton label="Go to Forgot password" loadingLabel="" loading={false} onPress={() => router.replace('/forgot-password')} />}
+      >
+        <View />
+      </AuthShell>
+    );
+  }
 
   if (done) {
     return (

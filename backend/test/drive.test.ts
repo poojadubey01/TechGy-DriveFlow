@@ -170,3 +170,29 @@ describe('clients and photos', () => {
     expect(after.photos).toBe(7);
   });
 });
+
+describe('background sync', () => {
+  it('re-syncs folders that are due, picks up new photos and notifies', async () => {
+    const { syncDue } = await import('../src/services/autosync.js');
+    const { driveConnections } = await import('../src/db/schema.js');
+    const { eq } = await import('drizzle-orm');
+    const u = await newUser(t);
+    await withDrive(t, u.token);
+    await call(t.app, 'PATCH', '/me/settings', { token: u.token, body: { notifyPhotos: true } });
+
+    // Just synced: nothing is due yet.
+    const fresh = await syncDue(t.app.ctx, 30);
+    expect(fresh.synced).toBe(0);
+
+    // An hour later, with a new photo in Drive, the background sync picks it up.
+    const hourAgo = new Date(Date.now() - 60 * 60_000);
+    await t.app.ctx.db.update(driveConnections).set({ lastSyncAt: hourAgo }).where(eq(driveConnections.userId, u.user.id));
+    const added = t.mockDrive.addImage('mock-vijetha', 'vijetha-garden-view.jpg');
+    const due = await syncDue(t.app.ctx, 30);
+    expect(due.synced).toBeGreaterThanOrEqual(1);
+    const note = (await call(t.app, 'GET', '/notifications', { token: u.token })).body.items.find((n: { kind: string }) => n.kind === 'photos');
+    expect(note).toMatchObject({ title: '1 new photo in Google Drive', body: 'Added to Projects / Vijetha Vaibhogam' });
+    expect((await call(t.app, 'GET', '/drive', { token: u.token })).body.lastSync).not.toBe(hourAgo.toISOString());
+    t.mockDrive.removeImage(added);
+  });
+});

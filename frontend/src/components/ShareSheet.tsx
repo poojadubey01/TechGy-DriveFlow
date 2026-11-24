@@ -45,7 +45,7 @@ export function ShareSheet({ deck, open, onClose, onToast }: Props) {
   const drag = useSharedValue(0); // finger offset while swiping down
 
   useEffect(() => {
-    drag.set(0);
+    if (open) drag.set(0);
     p.set(open ? withSpring(1, spring.settle) : withTiming(0, { duration: 220 }));
   }, [drag, open, p]);
 

@@ -138,7 +138,7 @@ export default function Syncing() {
       <AuthShell
         noBack
         eyebrow={fromProfile ? undefined : <StepDots step={3} />}
-        title="You're all set"
+        title="You’re all set"
         subtitle={`${clients} clients and ${photos.toLocaleString('en-IN')} photos from “${folder}” are ready to use.`}
         footer={<SubmitButton label={fromProfile ? 'Done' : 'Start creating'} loadingLabel="" loading={false} onPress={leave} />}
       >
@@ -147,7 +147,7 @@ export default function Syncing() {
             <PartyPopper size={44} color={colors.white} strokeWidth={1.7} />
           </View>
           <Text className="mt-6 text-center font-jk text-[14px] leading-[21px] text-muted">
-            New photos you add to this folder are picked up automatically.
+            DriveFlow checks this folder for new photos every 30 minutes. You can also sync any time from Profile.
           </Text>
         </View>
       </AuthShell>

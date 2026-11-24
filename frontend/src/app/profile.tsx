@@ -1,8 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { ChevronRight, FileText, HardDrive, LayoutTemplate, LifeBuoy, LogOut, type LucideIcon, Palette, ShieldCheck } from 'lucide-react-native';
-import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { ChevronRight, FileText, HardDrive, LayoutTemplate, LifeBuoy, LogOut, type LucideIcon, Palette, RefreshCw, ShieldCheck } from 'lucide-react-native';
+import { type ReactNode, useState } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 import { FilterPills, PageShell, SectionLabel } from '@/components/PageShell';
 import { PressableScale } from '@/components/ui/PressableScale';
@@ -15,7 +15,8 @@ import { confirmAction, showError } from '@/lib/confirm';
 import { resetTo } from '@/lib/nav';
 import { initials, useSession } from '@/data/session';
 import { signOut as endSession } from '@/services/auth';
-import { disconnectDrive } from '@/services/drive';
+import { disconnectDrive, syncDrive } from '@/services/drive';
+import { relativeTime } from '@/data/store';
 import { colors, shadow } from '@/theme/tokens';
 
 const SIZES = ['8 slides', '12 slides', '15 slides'] as const;
@@ -50,6 +51,23 @@ export default function Profile() {
   const defaultTemplate = getTemplate(useDefaultTemplate());
   const settings = useSettings();
   const size: Size = `${settings.defaultSlides} slides`;
+  const [syncing, setSyncing] = useState(false);
+  const [syncNote, setSyncNote] = useState<string | null>(null);
+
+  const syncNow = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    setSyncNote(null);
+    try {
+      const r = await syncDrive();
+      setSyncNote(r.newPhotos ? `${r.newPhotos} new ${r.newPhotos === 1 ? 'photo' : 'photos'} found` : 'Up to date');
+    } catch (e) {
+      showError('Couldn’t sync Google Drive', errorMessage(e));
+    } finally {
+      setSyncing(false);
+    }
+  };
+  const synced = drive.lastSyncAt ? relativeTime(drive.lastSyncAt).toLowerCase() : null;
 
   // Signing out also clears this account's decks, brand kit and settings from the phone.
   const signOut = () =>
@@ -101,13 +119,24 @@ export default function Profile() {
         <Row
           icon={HardDrive}
           title="Google Drive"
-          detail={driveReady ? `${drive.folder} folder · synced ${drive.lastSync?.toLowerCase() ?? 'today'}` : drive.connected ? 'Connected · choose a folder' : 'Not connected'}
+          detail={
+            driveReady
+              ? `${drive.folder} folder · ${syncing ? 'syncing…' : (syncNote ?? (synced ? `synced ${synced}` : 'not synced yet'))}`
+              : drive.connected
+                ? 'Connected · choose a folder'
+                : 'Not connected'
+          }
           right={
             driveReady ? (
-              <View className="flex-row items-center gap-1.5">
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} />
-                <Text className="font-jk-semibold text-[12px] text-ink-soft">Synced</Text>
-              </View>
+              <PressableScale
+                onPress={syncNow}
+                disabled={syncing}
+                accessibilityLabel={syncing ? 'Syncing Google Drive' : 'Sync Google Drive now'}
+                style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.sky, opacity: syncing ? 0.6 : 1 }}
+              >
+                {syncing ? <ActivityIndicator size="small" color={colors.brand} /> : <RefreshCw size={14} color={colors.brand} strokeWidth={2.4} />}
+                <Text className="font-jk-semibold text-[13px] text-brand-deep">{syncing ? 'Syncing' : 'Sync now'}</Text>
+              </PressableScale>
             ) : (
               <PressableScale
                 onPress={() => router.push(drive.connected ? { pathname: '/choose-folder', params: { from: 'profile' } } : { pathname: '/connect-drive', params: { from: 'profile' } })}
@@ -194,7 +223,7 @@ export default function Profile() {
           <Row icon={LifeBuoy} title="Help & support" detail="Questions, feedback and contact" right={<ChevronRight size={18} color={colors.muted} strokeWidth={2} />} />
         </PressableScale>
         <PressableScale onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })} scaleTo={0.98} accessibilityRole="link" accessibilityLabel="Privacy Policy">
-          <Row icon={ShieldCheck} title="Privacy" detail="Photos stay in your Google Drive. Decks are built for you only." right={<ChevronRight size={18} color={colors.muted} strokeWidth={2} />} />
+          <Row icon={ShieldCheck} title="Privacy" detail="Photos stay in your Google Drive. Decks stay private until you share a link." right={<ChevronRight size={18} color={colors.muted} strokeWidth={2} />} />
         </PressableScale>
         <PressableScale onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })} scaleTo={0.98} accessibilityRole="link" accessibilityLabel="Terms of Service">
           <Row icon={FileText} title="Terms of Service" right={<ChevronRight size={18} color={colors.muted} strokeWidth={2} />} last />

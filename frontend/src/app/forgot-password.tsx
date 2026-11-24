@@ -67,7 +67,7 @@ It expires in 30 minutes.`}
   }
 
   return (
-    <AuthShell title="Reset your password" subtitle="Enter your account email and we'll send you a code to set a new password.">
+    <AuthShell title="Reset your password" subtitle="Enter your account email and we’ll send you a code to set a new password.">
       <View className="gap-5">
         <TextField
           label="Email"

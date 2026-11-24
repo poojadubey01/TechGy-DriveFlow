@@ -11,6 +11,7 @@ import { clearToken, loadToken, saveToken } from '@/api/tokenStore';
 import type { ApiMe, ApiSignedIn } from '@/api/types';
 import { clearSession, getSession, setSessionReady, type User } from '@/data/session';
 import { loadWorkspace, resetWorkspace } from '@/data/workspace';
+import { unregisterPush } from '@/services/push';
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -102,6 +103,7 @@ export async function deleteAccount(email: string, typed: string): Promise<void>
 }
 
 export async function signOut(): Promise<void> {
+  await unregisterPush();
   await api('/auth/sign-out', { method: 'POST' }).catch(() => undefined);
   await endLocalSession();
 }

@@ -12,6 +12,8 @@ import type { UserRow } from './services/account.js';
 import type { DriveService } from './services/drive/index.js';
 import type { EmailSender } from './services/email.js';
 import type { GoogleAuth } from './services/google.js';
+import type { Assistant } from './services/assistant.js';
+import type { PushSender } from './services/push.js';
 
 /** Everything route handlers need, built once per app. */
 export type Ctx = {
@@ -22,6 +24,10 @@ export type Ctx = {
   email: EmailSender;
   googleAuth: GoogleAuth;
   drive: DriveService;
+  /** Push notifications to phones (null when turned off). */
+  push: PushSender | null;
+  /** Reads typed chat requests (Claude, or the rule-based reader without a key). */
+  assistant: Assistant;
 };
 
 export type Auth = { user: UserRow; sessionId: string };

@@ -154,7 +154,7 @@ export async function deckRoutes(app: FastifyInstance, ctx: Ctx) {
     }
     if (!deck) throw new Error('Could not create a unique share link');
 
-    await notify(db, user.id, {
+    await notify(ctx, user.id, {
       kind: 'ready',
       title: 'Your deck is ready',
       body: `${client.name} · ${deck.title}, ${slides.length} slides`,

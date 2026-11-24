@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { Check, Eye, EyeOff, type LucideIcon } from 'lucide-react-native';
 import { type ComponentRef, forwardRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, type TextInputProps, View } from 'react-native';
@@ -180,7 +181,7 @@ export function GoogleButton({ onPress, loading, label = 'Continue with Google' 
     <PressableScale
       onPress={onPress}
       disabled={loading}
-      accessibilityLabel={label}
+      accessibilityLabel={loading ? 'Connecting to Google' : label}
       style={{
         height: 56,
         borderRadius: 28,
@@ -217,17 +218,31 @@ export function OrDivider() {
 }
 
 /** Inline text button, e.g. "Forgot password?", "Create account". */
-export function TextLink({ label, onPress, muted }: { label: string; onPress: () => void; muted?: boolean }) {
+/** Shown under every Google button: signing up with Google means agreeing to the terms too. */
+export function GoogleTermsNotice() {
   return (
-    <Text
-      onPress={onPress}
-      accessibilityRole="link"
-      suppressHighlighting
-      className={`font-jk-semibold text-[14px] ${muted ? 'text-ink-soft' : 'text-brand-deep'}`}
-      style={{ paddingVertical: 6 }}
-    >
-      {label}
+    <Text className="text-center font-jk text-[12px] leading-[18px] text-muted">
+      By continuing with Google you agree to the{' '}
+      <Text className="font-jk-semibold text-brand-deep" onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })} accessibilityRole="link">
+        Terms
+      </Text>{' '}
+      and{' '}
+      <Text className="font-jk-semibold text-brand-deep" onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })} accessibilityRole="link">
+        Privacy Policy
+      </Text>
+      .
     </Text>
+  );
+}
+
+export function TextLink({ label, onPress, muted }: { label: string; onPress: () => void; muted?: boolean }) {
+  // The text is ~32 px tall; the extra touch area makes the tap target 44 px+ without moving anything.
+  return (
+    <Pressable onPress={onPress} accessibilityRole="link" accessibilityLabel={label} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}>
+      <Text suppressHighlighting className={`font-jk-semibold text-[14px] ${muted ? 'text-ink-soft' : 'text-brand-deep'}`} style={{ paddingVertical: 6 }}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 

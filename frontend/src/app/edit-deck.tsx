@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, usePreventRemove } from 'expo-router';
 import { ArrowDown, ArrowUp, type LucideIcon, RotateCcw, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
@@ -47,6 +47,15 @@ export default function EditDeck() {
   const draft = edits ?? withIds(current);
   const dirty = edits !== null;
 
+  // Leaving with unsaved edits (Back button, gesture or Android back) asks first.
+  const [leaving, setLeaving] = useState(false);
+  const allowLeave = usePreventRemove(dirty && !leaving, ({ repeat }) => {
+    confirmAction('Discard your changes?', 'Your edits to this deck haven’t been saved.', 'Discard', () => {
+      setLeaving(true);
+      repeat();
+    });
+  });
+
   if (!deck) return <DeckGone title="Edit deck" />;
 
   const update = (next: Item[]) => setEdits(next);
@@ -75,6 +84,8 @@ export default function EditDeck() {
       if (slides[0] && slides[0].title !== deck.title) await renameDeck(deck.id, slides[0].title);
       await saveDeck(deck.id, slides);
       haptic.success();
+      setLeaving(true);
+      allowLeave();
       router.back();
     } catch (e) {
       showError('Couldn’t save the deck', errorMessage(e));

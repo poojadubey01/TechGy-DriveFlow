@@ -9,6 +9,7 @@ import type { Ctx } from './context.js';
 import type { Database } from './db/client.js';
 import { Secrets } from './lib/crypto.js';
 import { AppError } from './lib/errors.js';
+import { assistantRoutes } from './routes/assistant.js';
 import { authRoutes } from './routes/auth.js';
 import { deckRoutes } from './routes/decks.js';
 import { driveRoutes } from './routes/drive.js';
@@ -18,6 +19,8 @@ import { DriveService } from './services/drive/index.js';
 import { MockDriveSource } from './services/drive/mock.js';
 import { ConsoleEmail, type EmailSender, ResendEmail } from './services/email.js';
 import { type GoogleAuth, GoogleOAuth, MockGoogleAuth, RealGoogleAuth } from './services/google.js';
+import { ExpoPush, type PushSender } from './services/push.js';
+import { type Assistant, createAssistant } from './services/assistant.js';
 
 export type AppDeps = {
   config: Config;
@@ -26,6 +29,8 @@ export type AppDeps = {
   email?: EmailSender;
   googleAuth?: GoogleAuth;
   drive?: DriveService;
+  push?: PushSender | null;
+  assistant?: Assistant;
 };
 
 declare module 'fastify' {
@@ -55,6 +60,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     drive:
       deps.drive ??
       new DriveService(secrets, new GoogleOAuth(config.GOOGLE_OAUTH_CLIENT_ID, config.GOOGLE_OAUTH_CLIENT_SECRET), config.DEV_MOCKS ? new MockDriveSource(config.SAMPLE_PHOTOS_DIR) : null),
+    push: deps.push !== undefined ? deps.push : config.PUSH_ENABLED ? new ExpoPush(config.EXPO_ACCESS_TOKEN) : null,
+    assistant: deps.assistant ?? createAssistant({ apiKey: config.ANTHROPIC_API_KEY, model: config.ASSISTANT_MODEL, log: app.log }),
   };
 
   app.decorate('ctx', ctx);
@@ -102,6 +109,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(async (r) => meRoutes(r, ctx));
   await app.register(async (r) => driveRoutes(r, ctx));
   await app.register(async (r) => deckRoutes(r, ctx));
+  await app.register(async (r) => assistantRoutes(r, ctx));
 
   if (config.DEV_MOCKS && ctx.email instanceof ConsoleEmail) {
     const outbox = ctx.email;

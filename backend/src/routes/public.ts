@@ -105,7 +105,7 @@ export async function publicRoutes(app: FastifyInstance, ctx: Ctx) {
       .returning({ id: deckVisits.id });
     const [total] = await db.select({ n: count() }).from(deckVisits).where(eq(deckVisits.deckId, deck.id));
     const n = total?.n ?? 1;
-    await notify(db, deck.userId, {
+    await notify(ctx, deck.userId, {
       kind: 'viewed',
       title: `${client.name} opened your ${deck.type.toLowerCase()}`,
       body: `Viewed ${n} ${n === 1 ? 'time' : 'times'} · ${deck.title}`,
@@ -181,6 +181,8 @@ export async function publicRoutes(app: FastifyInstance, ctx: Ctx) {
     minDeckPhotos: MIN_DECK_PHOTOS,
     shareBaseUrl: ctx.config.SHARE_BASE_URL,
     devMocks: ctx.config.DEV_MOCKS,
+    syncIntervalMinutes: ctx.config.SYNC_INTERVAL_MINUTES,
+    assistant: ctx.config.ANTHROPIC_API_KEY ? 'ai' : 'rules',
   }));
 
   /** Help-screen feedback. Signed-in people don't need to give an email. */

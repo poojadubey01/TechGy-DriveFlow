@@ -37,6 +37,7 @@ import {
 } from '@/data/clients';
 import { errorMessage } from '@/api/client';
 import { showError } from '@/lib/confirm';
+import { understand } from '@/services/assistant';
 import { setPickHandler } from '@/data/photoPick';
 import { createDeck } from '@/data/app';
 import { rememberDetail } from '@/data/deckEdits';
@@ -55,6 +56,7 @@ const BLOBS: readonly GlowBlob[] = [
 type Msg =
   | { id: number; role: 'me'; text: string; mention?: Client }
   | { id: number; role: 'ai'; kind: 'greet' | 'needTag' | 'askSlides' | 'badSlides' }
+  | { id: number; role: 'ai'; kind: 'say'; text: string }
   | { id: number; role: 'ai'; kind: 'askPhotos' | 'askTemplate'; client: Client }
   | { id: number; role: 'ai'; kind: 'review'; client: Client; slides: number; note?: string }
   | { id: number; role: 'ai'; kind: 'confirm'; client: Client; slides: number; deck: DeckType; photos: number; template: string };
@@ -76,7 +78,7 @@ const typeIn = (text: string) => deckTypes.find((t) => new RegExp(`\\b${t}`, 'i'
 
 function asDeck(v: string | string[] | undefined): DeckType {
   const raw = Array.isArray(v) ? v[0] : v;
-  return (deckTypes as readonly string[]).includes(raw ?? '') ? (raw as DeckType) : 'Portfolio';
+  return deckTypes.find((t) => t.toLowerCase() === (raw ?? '').toLowerCase()) ?? 'Portfolio';
 }
 
 /** 03 Tag a client + 04 AI asks — one live conversation. */
@@ -198,10 +200,50 @@ export default function Chat() {
     startRequest(text, tagged, deck);
   };
 
+  /**
+   * A typed request goes to the assistant first: it finds the client and any answers already given
+   * ("a 10-slide proposal for Highrize, night shots, bold template"), and the chat skips those
+   * questions. If the assistant can't be reached, the chat carries on the usual way.
+   */
   const startRequest = (text: string, client: Client | undefined, baseType: DeckType) => {
+    if (!text) return startScripted(text, client, baseType);
+    push({ role: 'me', text, mention: client });
+    setDraft('');
+    setTyping(true);
+    understand(text, client?.id)
+      .then((u) => {
+        setTyping(false);
+        const who = (u.clientId ? findClient(u.clientId) : undefined) ?? client;
+        if (!who) {
+          reply({ role: 'ai', kind: u.source === 'ai' ? 'say' : 'needTag', text: u.reply } as NewMsg);
+          return;
+        }
+        const type = u.deckType ?? typeIn(text) ?? baseType;
+        setDeck(type);
+        setTagged(undefined);
+        setSubject(who);
+        const slides = u.slides ? `${u.slides} slides` : null;
+        if (u.photoChoice) setPhotoPick(u.photoChoice);
+        if (slides) setSlidePick(slides);
+        if (u.template) setTemplatePick(u.template);
+        push({ role: 'ai', kind: 'say', text: u.reply });
+        haptic.tap();
+        if (!u.photoChoice) return reply({ role: 'ai', kind: 'askPhotos', client: who }, () => setStage('photos'));
+        if (!slides) return reply({ role: 'ai', kind: 'askSlides' }, () => setStage('slides'));
+        if (!u.template) return reply({ role: 'ai', kind: 'askTemplate', client: who }, () => setStage('template'));
+        showReview(who, u.photoChoice, slides);
+      })
+      .catch(() => {
+        setTyping(false);
+        startScripted(text, client, baseType, true);
+      });
+  };
+
+  /** The step-by-step flow (also the fallback when the assistant is unreachable). */
+  const startScripted = (text: string, client: Client | undefined, baseType: DeckType, alreadyShown = false) => {
     if (!client) {
       if (!text) return;
-      push({ role: 'me', text });
+      if (!alreadyShown) push({ role: 'me', text });
       setDraft('');
       reply({ role: 'ai', kind: 'needTag' });
       return;
@@ -209,7 +251,7 @@ export default function Chat() {
     // A deck type typed in the message wins over the one the chat was opened with.
     const type = typeIn(text) ?? baseType;
     setDeck(type);
-    push({ role: 'me', text: text || `Make a ${type.toLowerCase()} for`, mention: client });
+    if (!alreadyShown) push({ role: 'me', text: text || `Make a ${type.toLowerCase()} for`, mention: client });
     setDraft('');
     setTagged(undefined);
     setSubject(client);
@@ -257,13 +299,17 @@ export default function Chat() {
     if (stage !== 'template' || typing || !subject || !slidePick) return;
     setTemplatePick(id);
     push({ role: 'me', text: `${getTemplate(id).name} template` });
+    showReview(subject, photoPick, slidePick);
+  };
+
+  /** Shows the photos that will go into the deck, so the user can take out any they don't like. */
+  const showReview = (client: Client, photoChoice: string | null, slides: string) => {
     setStage('review');
-    // Show the photos that will go into the deck, so the user can take out any they don't like.
-    const handPicked = photoPick?.includes('hand-picked') && picked.current?.length ? picked.current : null;
-    const pick = handPicked ? { photos: handPicked, note: undefined } : pickPhotos(subject, photoPick ?? 'Best of everything');
+    const handPicked = photoChoice?.includes('hand-picked') && picked.current?.length ? picked.current : null;
+    const pick = handPicked ? { photos: handPicked, note: undefined } : pickPhotos(client, photoChoice ?? 'Best of everything');
     setPool(pick.photos);
     setRemoved([]);
-    reply({ role: 'ai', kind: 'review', client: subject, slides: Number.parseInt(slidePick, 10) || 12, note: pick.note });
+    reply({ role: 'ai', kind: 'review', client, slides: Number.parseInt(slides, 10) || 12, note: pick.note });
   };
 
   const kept = pool.filter((a) => !removed.includes(a));
@@ -350,7 +396,7 @@ export default function Chat() {
         <View className="px-5" style={{ paddingTop: insets.top + 10 }}>
           <TopBar
             title="DriveFlow AI"
-            subtitle={drive.connected ? 'Drive synced' : undefined}
+            subtitle={drive.folderId ? 'Drive synced' : undefined}
             right={<IconButton icon={Plus} label="New chat" tint={colors.brand} onPress={reset} />}
           />
         </View>
@@ -382,7 +428,7 @@ export default function Chat() {
               case 'greet':
                 return (
                   <AiBubble key={m.id}>
-                    Hi {firstName(user) || 'there'}. Who are we creating for today? Type <Text className="font-jk-semibold text-brand-deep">@</Text> to tag a client.
+                    Hi {firstName(user) || 'there'}. Who are we creating for today? Tell me what you need, or type <Text className="font-jk-semibold text-brand-deep">@</Text> to tag a client.
                   </AiBubble>
                 );
               case 'badSlides':
@@ -391,6 +437,8 @@ export default function Chat() {
                     Please type a number from {SLIDES_MIN} to {SLIDES_MAX}, or pick one of the suggestions above.
                   </AiBubble>
                 );
+              case 'say':
+                return <AiBubble key={m.id}>{m.text}</AiBubble>;
               case 'needTag':
                 return (
                   <AiBubble key={m.id}>
@@ -402,7 +450,7 @@ export default function Chat() {
                   <View key={m.id} className="gap-3">
                     <AiBubble
                       extra={
-                        <View className="mt-3.5 flex-row gap-2">
+                        <View className="mt-3.5 flex-row flex-wrap gap-2">
                           {m.client.gallery.slice(0, 3).map((src, i) => (
                             <Animated.View key={i}>
                               <Image source={src} style={{ width: 56, height: 56, borderRadius: 14 }} contentFit="cover" accessible={false} />
@@ -419,7 +467,7 @@ export default function Chat() {
                         </View>
                       }
                     >
-                      I found <Text className="font-jk-semibold text-brand-deep">{m.client.photos} photos</Text> in {drive.folder ?? 'Projects'} / {m.client.name}. Which ones should I use?
+                      I found <Text className="font-jk-semibold text-brand-deep">{m.client.photos} {m.client.photos === 1 ? 'photo' : 'photos'}</Text> in {drive.folder ?? 'Projects'} / {m.client.name}. Which ones should I use?
                     </AiBubble>
                     <Text className="ml-11 font-jk text-[13px] text-muted">Pick one, or describe what you want below</Text>
                     <View className="ml-11 flex-row flex-wrap gap-2">
@@ -527,7 +575,7 @@ export default function Chat() {
                               <Text className="font-jk-bold text-[11px] text-white">{i + 1}</Text>
                             </View>
                             {active && kept.length > MIN_DECK_PHOTOS ? (
-                              <Pressable onPress={() => removePhoto(src)} hitSlop={6} accessibilityRole="button" accessibilityLabel={`Remove photo ${i + 1}`} style={{ position: 'absolute', right: 5, top: 5 }}>
+                              <Pressable onPress={() => removePhoto(src)} hitSlop={9} accessibilityRole="button" accessibilityLabel={`Remove photo ${i + 1}`} style={{ position: 'absolute', right: 5, top: 5 }}>
                                 <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white, boxShadow: shadow.soft }}>
                                   <X size={15} color={colors.danger} strokeWidth={2.6} />
                                 </View>

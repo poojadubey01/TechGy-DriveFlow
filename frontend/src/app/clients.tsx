@@ -14,7 +14,7 @@ const FILTERS = ['All', 'Villas', 'Towers', 'Communities'] as const;
 type Filter = (typeof FILTERS)[number];
 
 function matchesFilter(c: Client, f: Filter) {
-  const m = c.meta.toLowerCase();
+  const m = `${c.meta} ${c.name}`.toLowerCase();
   if (f === 'Villas') return m.includes('villa');
   if (f === 'Towers') return m.includes('tower');
   if (f === 'Communities') return m.includes('community') || m.includes('township');
@@ -36,7 +36,7 @@ function ClientRow({ c }: { c: Client }) {
           {c.name}
         </Text>
         <Text className="mt-0.5 font-jk text-[13px] text-muted" numberOfLines={1}>
-          {c.meta} · {c.photos} photos
+          {c.meta} · {c.photos} {c.photos === 1 ? 'photo' : 'photos'}
         </Text>
         <Text className="mt-1 font-jk text-[12px] text-brand-deep" numberOfLines={1}>
           {last ? `Last deck: ${last.type.toLowerCase()} · ${last.when}` : 'No decks yet'}

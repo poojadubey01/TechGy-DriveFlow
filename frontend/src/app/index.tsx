@@ -11,7 +11,7 @@ import { FlowLine } from '@/components/FlowLine';
 import { GlowBackground } from '@/components/glow/GlowBackground';
 import type { GlowBlob } from '@/components/glow/types';
 import { KineticHeadline } from '@/components/KineticHeadline';
-import { TextLink } from '@/components/auth/Form';
+import { GoogleTermsNotice, TextLink } from '@/components/auth/Form';
 import { PillButton } from '@/components/ui/Button';
 import { errorMessage } from '@/api/client';
 import { showError } from '@/lib/confirm';
@@ -119,6 +119,9 @@ export default function Welcome() {
           <TextLink label="Sign in with email" muted onPress={() => router.push('/sign-in')} />
           <View style={{ width: 1, height: 14, backgroundColor: colors.edge }} />
           <TextLink label="Create account" onPress={() => router.push('/sign-up')} />
+        </View>
+        <View className="mt-1">
+          <GoogleTermsNotice />
         </View>
       </View>
     </View>

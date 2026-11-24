@@ -17,9 +17,9 @@ async function toDataUri(photo: Asset): Promise<string> {
   // The web print frame loads the (signed) URL itself; it needs a full URL.
   if (Platform.OS === 'web') return new URL(photo.uri, window.location.href).href;
   if (photo.uri.startsWith('file:')) return `data:image/jpeg;base64,${await new File(photo.uri).base64()}`;
-  const target = new File(Paths.cache, `pdf-photo-${photo.id.replace(/[^w-]/g, '')}.jpg`);
-  if (target.exists) target.delete();
-  const file = await File.downloadFileAsync(photo.uri, target);
+  // One cache file per photo id (letters, digits and dashes only); a later download replaces it.
+  const target = new File(Paths.cache, `pdf-photo-${photo.id.replace(/[^A-Za-z0-9-]/g, '')}.jpg`);
+  const file = await File.downloadFileAsync(photo.uri, target, { idempotent: true });
   return `data:image/jpeg;base64,${await file.base64()}`;
 }
 
@@ -161,9 +161,9 @@ export async function downloadDeckPdf(
   { deck = 'Portfolio', onReady, brand = null, template = 'classic' }: { deck?: string; onReady?: () => void; brand?: PdfBrand; template?: TemplateId } = {},
 ): Promise<void> {
   // Decks repeat photos: read and encode each one once, then reuse it for every slide.
-  const unique = [...new Set(slides.map((s) => s.source))];
-  const uris = new Map(await Promise.all(unique.map(async (src) => [src, await toDataUri(src)] as const)));
-  const pages = slides.map((s) => ({ src: uris.get(s.source)!, title: s.title }));
+  const unique = [...new Map(slides.map((s) => [s.source.id, s.source] as const)).values()];
+  const uris = new Map(await Promise.all(unique.map(async (src) => [src.id, await toDataUri(src)] as const)));
+  const pages = slides.map((s) => ({ src: uris.get(s.source.id)!, title: s.title }));
   const doc = html(client, deck, pages, brand, template);
   if (Platform.OS === 'web') {
     onReady?.();

@@ -195,7 +195,13 @@ npm run doctor
   - "Continue with Google" sends a development token (`DEV_GOOGLE_EMAIL` in `src/api/config.ts`).
   - Connecting Drive sends `{ mock: true }`.
   - To go live, use `expo-auth-session` with your Google OAuth client IDs. Send the ID token to `POST /auth/google`, and the authorization code (with the `drive.readonly` scope and offline access) to `POST /drive/connect`. Then turn `DEV_MOCKS` off on the server. The screens don't change: only `src/services/auth.ts` and `src/services/drive.ts` do.
-- **AI replies** in the chat are still scripted on the phone. The deck itself is built by the API.
+- **The chat's first message** goes to the API's assistant (`POST /assistant/understand`).
+  - It works out the client, deck type, slide count, photos and template, and skips the questions already answered: "a 10-slide proposal for Highrize, night shots, bold template" goes straight to the photo check.
+  - With `ANTHROPIC_API_KEY` on the server it uses Claude; without one, a built-in reader. The follow-up questions are still scripted on the phone.
+- **Push notifications** (`src/services/push.ts`) need a development or store build with an EAS project ID: run `npx eas-cli init` (it adds `extra.eas.projectId` to `app.json`), then `npx expo run:android` or an EAS build.
+  - Expo Go on Android can't receive remote pushes (removed in SDK 53), and the web app doesn't use them.
+  - There, registering quietly does nothing and the in-app notifications still work.
+- **Drive sync:** the server re-syncs every 30 minutes, and Profile has **Sync now**.
 - **Photo labels** (exterior / interior / night) come from each photo's file name or its Drive description on the server. They can be fixed by hand with `PATCH /photos/:id`. If a folder has too few of a kind, the assistant tops up with the client's other photos and says so.
 - **Share links** point to `https://driveflow.app/p/<share code>`. The API issues the codes, and `/p/[slug]` loads the deck from the public API without sign-in and records each visit.
   - `app.json` declares iOS associated domains and an Android app link for `driveflow.app/p/*`. They start working once that domain serves the `apple-app-site-association` and `assetlinks.json` files.

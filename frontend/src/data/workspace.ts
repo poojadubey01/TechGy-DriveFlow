@@ -20,6 +20,8 @@ export async function loadWorkspace(me?: ApiMe) {
   hydrateBrand(data.brand);
   setUnreadCount(data.unreadNotifications);
   await Promise.allSettled([data.drive.folder ? loadClients() : Promise.resolve(), loadDecks(), loadNotifications()]);
+  // Push notifications: ask once and register this phone (does nothing where push isn't available).
+  void import('@/services/push').then((p) => p.registerForPush()).catch(() => undefined);
   return data;
 }
 

@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { AuthShell } from '@/components/auth/AuthShell';
-import { Checkbox, GoogleButton, OrDivider, StrengthBar, SubmitButton, TextField, type TextInputRef, TextLink } from '@/components/auth/Form';
+import { Checkbox, GoogleButton, GoogleTermsNotice, OrDivider, StrengthBar, SubmitButton, TextField, type TextInputRef, TextLink } from '@/components/auth/Form';
 import { haptic } from '@/hooks/haptics';
 import { useMounted } from '@/hooks/useMounted';
 import { goAfterSignIn } from '@/lib/nav';
@@ -87,6 +87,7 @@ export default function SignUp() {
     >
       <View className="gap-4">
         <GoogleButton onPress={withGoogle} loading={google} label="Sign up with Google" />
+        <GoogleTermsNotice />
         <OrDivider />
         <TextField
           label="Full name"
