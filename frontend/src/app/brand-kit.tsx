@@ -7,7 +7,7 @@ import { SlideView } from '@/components/SlideView';
 import { SettingsCard, SettingsRow } from '@/components/Settings';
 import { Toggle } from '@/components/ui/Toggle';
 import { ACCENTS, setBrand, useBrand } from '@/data/brand';
-import { getClient } from '@/data/clients';
+import { SAMPLE_PHOTO, useSampleClient } from '@/data/clients';
 import { useSession } from '@/data/session';
 import { getTemplate, useDefaultTemplate } from '@/data/templates';
 import { haptic } from '@/hooks/haptics';
@@ -18,7 +18,7 @@ export default function BrandKit() {
   const brand = useBrand();
   const { user } = useSession();
   const { width } = useWindowDimensions();
-  const sample = getClient('highrize');
+  const sample = useSampleClient();
   const template = useDefaultTemplate();
 
   return (
@@ -27,7 +27,7 @@ export default function BrandKit() {
       <View style={{ borderRadius: 22, boxShadow: shadow.card }} accessible accessibilityLabel={`Cover preview${brand.on ? ` with ${brand.name} brand` : ', no brand'}`}>
         <SlideView
           template={template}
-          source={sample.cover}
+          source={sample.cover ?? SAMPLE_PHOTO}
           title="Luxury villa portfolio"
           eyebrow={sample.name}
           index={0}

@@ -11,3 +11,12 @@ export function confirmAction(title: string, message: string, confirmLabel: stri
     { text: confirmLabel, style: 'destructive', onPress: onConfirm },
   ]);
 }
+
+/** Tells the person something didn't work (an alert on phones, the browser's alert on web). */
+export function showError(title: string, message: string) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.alert(`${title}\n\n${message}`);
+    return;
+  }
+  Alert.alert(title, message);
+}

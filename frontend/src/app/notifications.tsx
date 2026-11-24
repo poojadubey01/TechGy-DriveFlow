@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
 import { CheckCheck, Eye, Images, type LucideIcon, Presentation, Users } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 import { PageShell, SectionLabel } from '@/components/PageShell';
 import { IconButton } from '@/components/ui/Button';
 import { PressableScale } from '@/components/ui/PressableScale';
-import { type AppNotification, markAllRead, markRead, type NotificationKind, notifications, useReadIds, useUnreadCount } from '@/data/app';
+import { type AppNotification, loadNotifications, markAllRead, markRead, type NotificationKind, useNotifications } from '@/data/app';
 import { colors, shadow } from '@/theme/tokens';
 
 const ICONS: Record<NotificationKind, LucideIcon> = { ready: Presentation, viewed: Eye, photos: Images, team: Users };
@@ -39,9 +40,11 @@ function Row({ n, unread }: { n: AppNotification; unread: boolean }) {
 
 /** Notifications — deck ready, client views, new Drive photos, team changes. */
 export default function Notifications() {
-  const readIds = useReadIds();
-  const unread = useUnreadCount();
-  const groups = (['Today', 'Earlier'] as const).map((g) => ({ g, items: notifications.filter((n) => n.group === g) }));
+  const { items: notifications, unread, status } = useNotifications();
+  useEffect(() => {
+    loadNotifications().catch(() => undefined);
+  }, []);
+  const groups = (['Today', 'Earlier'] as const).map((g) => ({ g, items: notifications.filter((n) => n.group === g) })).filter((x) => x.items.length > 0);
 
   return (
     <PageShell
@@ -51,12 +54,24 @@ export default function Notifications() {
       <Text className="px-2 font-jk text-[14px] text-muted" accessibilityLiveRegion="polite">
         {unread > 0 ? `${unread} unread` : 'You are all caught up'}
       </Text>
+      {notifications.length === 0 && status === 'loading' ? (
+        <View className="items-center py-10" accessibilityLabel="Loading notifications">
+          <ActivityIndicator color={colors.brand} />
+        </View>
+      ) : notifications.length === 0 ? (
+        <View className="mt-4 items-center rounded-[22px] bg-card px-6 py-10" style={{ boxShadow: shadow.soft }}>
+          <Text className="font-jk-semibold text-[16px] text-ink">No notifications yet</Text>
+          <Text className="mt-1 text-center font-jk text-[13px] text-muted">
+            {status === 'error' ? 'Couldn’t load notifications. Check your connection.' : 'You’ll hear here when a deck is ready or a client opens one.'}
+          </Text>
+        </View>
+      ) : null}
       {groups.map(({ g, items }) => (
         <View key={g}>
           <SectionLabel text={g} />
           <View className="gap-2.5">
             {items.map((n) => (
-              <Row key={n.id} n={n} unread={!readIds.has(n.id)} />
+              <Row key={n.id} n={n} unread={!n.read} />
             ))}
           </View>
         </View>

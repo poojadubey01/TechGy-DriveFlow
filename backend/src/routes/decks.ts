@@ -43,7 +43,7 @@ export function deckSummary(ctx: Ctx, d: DeckRow, client: Pick<ClientRow, 'id' |
     slides: d.slides.length,
     builtSlides: d.builtSlides.length,
     edited: edited(d),
-    cover: coverId ? { photoId: coverId, url: photoPath(coverId) } : null,
+    cover: coverId ? { photoId: coverId, url: photoPath(ctx, coverId) } : null,
     share: { id: d.shareId, url: `${ctx.config.SHARE_BASE_URL}${d.shareId}`, active: d.shareActive, allowPdf: d.shareAllowPdf },
     opens,
     createdAt: d.createdAt.toISOString(),
@@ -60,7 +60,7 @@ async function deckDetail(ctx: Ctx, d: DeckRow, client: ClientRow, user: typeof 
     client: { id: client.id, name: client.name, meta: client.meta },
     sourcePhotoIds: d.sourcePhotoIds,
     sender: { name: user.name, email: user.email, company: user.company ?? undefined },
-    slideList: slides.map((s) => ({ photoId: s.photoId, title: s.title, url: photoPath(s.photoId), missing: missing.has(s.photoId) })),
+    slideList: slides.map((s) => ({ photoId: s.photoId, title: s.title, url: photoPath(ctx, s.photoId), missing: missing.has(s.photoId) })),
   };
 }
 

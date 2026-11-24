@@ -21,24 +21,28 @@ import { useBrand } from '@/data/brand';
 import {
   type Asset,
   type Client,
-  clients,
   coverTitle,
   type DeckType,
   deckTypes,
-  getClient,
+  findClient,
   MIN_DECK_PHOTOS,
   photoChoices,
   pickPhotos,
   slideChoices,
   SLIDES_MAX,
   SLIDES_MIN,
+  SAMPLE_PHOTO,
   typedSlides,
+  useClients,
 } from '@/data/clients';
+import { errorMessage } from '@/api/client';
+import { showError } from '@/lib/confirm';
 import { setPickHandler } from '@/data/photoPick';
 import { createDeck } from '@/data/app';
+import { rememberDetail } from '@/data/deckEdits';
 import { firstName, useSession } from '@/data/session';
 import { useSettings } from '@/data/settings';
-import { getTemplate, setDeckTemplate, type TemplateId, templates, useDefaultTemplate } from '@/data/templates';
+import { getTemplate, type TemplateId, templates, useDefaultTemplate } from '@/data/templates';
 import { haptic } from '@/hooks/haptics';
 import { colors, glow, shadow } from '@/theme/tokens';
 import { FadeEdges } from '@/components/FadeEdges';
@@ -84,7 +88,8 @@ export default function Chat() {
   const nextId = useRef(2);
 
   const [deck, setDeck] = useState<DeckType>(() => asDeck(params.type));
-  const [tagged, setTagged] = useState<Client | undefined>(() => (params.client ? getClient(params.client) : undefined));
+  const clients = useClients();
+  const [tagged, setTagged] = useState<Client | undefined>(() => (params.client ? findClient(params.client) : undefined));
   // Pre-filled text ends with a space so typing "@" straight away opens the client list.
   const [draft, setDraft] = useState(() => (params.client || params.type ? `Make a ${asDeck(params.type).toLowerCase()} for ` : ''));
   const [messages, setMessages] = useState<Msg[]>([{ id: 1, role: 'ai', kind: 'greet' }]);
@@ -102,6 +107,7 @@ export default function Chat() {
   const brand = useBrand();
   const [focused, setFocused] = useState(false);
   const [builtDeckId, setBuiltDeckId] = useState<string | null>(null);
+  const [building, setBuilding] = useState(false);
   const { user, drive } = useSession();
   const { defaultSlides } = useSettings();
 
@@ -149,7 +155,7 @@ export default function Chat() {
 
   const matches = useMemo(
     () => (mentionQuery === null ? [] : clients.filter((c) => c.name.toLowerCase().split(' ').some((w) => w.startsWith(mentionQuery)) || c.name.toLowerCase().startsWith(mentionQuery))),
-    [mentionQuery],
+    [mentionQuery, clients],
   );
 
   const pick = (c: Client) => {
@@ -272,19 +278,29 @@ export default function Chat() {
     setRemoved((r) => r.filter((x) => x !== a));
   };
 
-  const build = () => {
-    if (stage !== 'review' || typing || !subject || !slidePick || !templatePick || kept.length < MIN_DECK_PHOTOS) return;
+  const build = async () => {
+    if (building || stage !== 'review' || typing || !subject || !slidePick || !templatePick || kept.length < MIN_DECK_PHOTOS) return;
     const slides = Number.parseInt(slidePick, 10) || 12;
     // Every build is a new deck (it never replaces another one). The kept photos become its slides.
-    const created = createDeck({
-      clientId: subject.id,
-      type: deck,
-      slides,
-      title: coverTitle(subject, deck),
-      photos: kept,
-      sender: user ? { name: user.name, email: user.email } : undefined,
-    });
-    setDeckTemplate(created.id, templatePick);
+    setBuilding(true);
+    let created;
+    try {
+      created = await createDeck({
+        clientId: subject.id,
+        type: deck,
+        slides,
+        title: coverTitle(subject, deck),
+        photoIds: kept.map((a) => a.id),
+        template: templatePick,
+      });
+      rememberDetail(created);
+    } catch (e) {
+      showError('Couldn’t build the deck', errorMessage(e));
+      haptic.warn();
+      return;
+    } finally {
+      setBuilding(false);
+    }
     setBuiltDeckId(created.id);
     push({ role: 'me', text: removed.length ? `Use these ${plural(kept.length, 'photo')}` : 'Looks good, build it' });
     setStage('done');
@@ -310,6 +326,7 @@ export default function Chat() {
     setPool([]);
     setRemoved([]);
     setBuiltDeckId(null);
+    setBuilding(false);
     setDeck(asDeck(params.type));
     setTagged(undefined);
     setDraft('');
@@ -317,7 +334,7 @@ export default function Chat() {
 
   const suggest = (type: DeckType, clientId: string) => {
     setDeck(type);
-    setTagged(getClient(clientId));
+    setTagged(findClient(clientId));
     setDraft(`Make a ${type.toLowerCase()} for `);
   };
 
@@ -459,7 +476,7 @@ export default function Chat() {
                               <View style={{ borderRadius: 16, borderWidth: 2, borderColor: on ? colors.brand : 'transparent', padding: 2, boxShadow: shadow.soft }}>
                                 <SlideView
                                   template={t.id}
-                                  source={m.client.cover}
+                                  source={m.client.cover ?? SAMPLE_PHOTO}
                                   title={coverTitle(m.client, deck)}
                                   eyebrow={m.client.name}
                                   index={0}
@@ -504,7 +521,7 @@ export default function Chat() {
                     <View style={{ marginLeft: 44, borderRadius: 22, padding: 10, backgroundColor: 'rgba(255,255,255,0.85)', boxShadow: shadow.soft }}>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                         {kept.map((src, i) => (
-                          <View key={String(src)} style={{ width: tile, height: tile, borderRadius: 14, overflow: 'hidden' }}>
+                          <View key={src.id} style={{ width: tile, height: tile, borderRadius: 14, overflow: 'hidden' }}>
                             <Image source={src} style={{ width: '100%', height: '100%' }} contentFit="cover" accessible={false} />
                             <View style={{ position: 'absolute', left: 6, top: 6, minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(18,21,42,0.55)' }}>
                               <Text className="font-jk-bold text-[11px] text-white">{i + 1}</Text>
@@ -524,7 +541,7 @@ export default function Chat() {
                           <Text className="font-jk text-[12px] text-muted">{active ? 'Removed · tap to put back' : 'Removed'}</Text>
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
                             {removed.map((src, i) => (
-                              <Pressable key={String(src)} onPress={() => restorePhoto(src)} disabled={!active} accessibilityRole="button" accessibilityLabel={`Put back removed photo ${i + 1}`}>
+                              <Pressable key={src.id} onPress={() => restorePhoto(src)} disabled={!active} accessibilityRole="button" accessibilityLabel={`Put back removed photo ${i + 1}`}>
                                 <View style={{ width: 52, height: 52, borderRadius: 12, overflow: 'hidden' }}>
                                   <Image source={src} style={{ width: '100%', height: '100%', opacity: 0.45 }} contentFit="cover" accessible={false} />
                                   {active ? (
@@ -551,14 +568,14 @@ export default function Chat() {
                     {active ? (
                       <PressableScale
                         onPress={build}
-                        disabled={tooFew}
+                        disabled={tooFew || building}
                         feedback="press"
                         accessibilityLabel={`Build deck with ${plural(used, 'photo')}`}
                         containerStyle={{ alignSelf: 'flex-start', marginLeft: 44 }}
                         style={{ height: 46, paddingHorizontal: 20, borderRadius: 23, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.brand, boxShadow: shadow.brand, opacity: tooFew ? 0.45 : 1 }}
                       >
                         <WandSparkles size={17} color={colors.white} strokeWidth={2} />
-                        <Text className="font-jk-semibold text-[15px] text-white">Build deck</Text>
+                        <Text className="font-jk-semibold text-[15px] text-white">{building ? 'Building…' : 'Build deck'}</Text>
                       </PressableScale>
                     ) : null}
                   </View>
@@ -592,23 +609,18 @@ export default function Chat() {
           {showSuggestions && (
             <View className="mt-2 gap-2">
               <Text className="font-jk text-[13px] text-muted">Try asking</Text>
-              {(
-                [
-                  { type: 'Portfolio', id: 'highrize' },
-                  { type: 'Proposal', id: 'elysium' },
-                ] as const
-              ).map((s) => (
+              {clients.slice(0, 2).map((c, i) => ({ type: (i === 0 ? 'Portfolio' : 'Proposal') as DeckType, id: c.id, name: c.name })).map((s) => (
                 <PressableScale
                   key={s.id}
                   onPress={() => suggest(s.type, s.id)}
                   feedback="select"
                   scaleTo={0.97}
-                  accessibilityLabel={`${s.type} for ${getClient(s.id).name}`}
+                  accessibilityLabel={`${s.type} for ${s.name}`}
                   containerStyle={{ alignSelf: 'flex-start' }}
                   className="h-10 flex-row items-center rounded-full border-[1.5px] border-[#E1E5FF] bg-card px-4"
                 >
                   <Text className="font-jk-semibold text-[14px] text-ink-soft">
-                    {s.type} for <Text className="text-brand-deep">@{getClient(s.id).name}</Text>
+                    {s.type} for <Text className="text-brand-deep">@{s.name}</Text>
                   </Text>
                 </PressableScale>
               ))}

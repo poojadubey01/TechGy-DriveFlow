@@ -71,6 +71,19 @@ export function me(req: FastifyRequest): Auth {
   return req.auth;
 }
 
-/** Path the app turns into a full URL (base URL + path) to load a photo with its auth header. */
-export const photoPath = (photoId: string) => `/photos/${photoId}/image`;
+const DAY = 86_400;
+
+/** Signature for a photo URL; valid until `exp` (unix seconds). */
+export const photoSig = (ctx: Pick<Ctx, 'secrets'>, photoId: string, exp: number) => ctx.secrets.mac(`photo:${photoId}:${exp}`);
+
+/**
+ * Path the app adds to the API base URL to load a photo. It carries a signature, so plain image
+ * views, web <img> tags and the PDF can load it without the sign-in header. It stays the same for
+ * a whole day (so image caches keep working) and expires 1–2 days later.
+ */
+export function photoPath(ctx: Pick<Ctx, 'secrets'>, photoId: string) {
+  const exp = (Math.floor(Date.now() / 1000 / DAY) + 2) * DAY;
+  return `/photos/${photoId}/image?exp=${exp}&sig=${photoSig(ctx, photoId, exp)}`;
+}
+
 export const publicPhotoPath = (shareId: string, photoId: string) => `/public/decks/${shareId}/photos/${photoId}`;

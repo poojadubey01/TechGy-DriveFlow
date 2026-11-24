@@ -8,12 +8,13 @@ import { SubmitButton } from '@/components/auth/Form';
 import { DeckGone } from '@/components/DeckGone';
 import { PageShell } from '@/components/PageShell';
 import { IconButton } from '@/components/ui/Button';
-import { renameDeck, setDeckSlides } from '@/data/app';
+import { errorMessage } from '@/api/client';
+import { renameDeck } from '@/data/app';
 import type { DeckSlide } from '@/data/clients';
-import { builtSlides, saveDeck, useDeckSlides } from '@/data/deckEdits';
+import { resetDeck, saveDeck, useDeckSlides, useDeckSlidesLoaded } from '@/data/deckEdits';
 import { haptic } from '@/hooks/haptics';
 import { useDeckRoute } from '@/hooks/useDeckRoute';
-import { confirmAction } from '@/lib/confirm';
+import { confirmAction, showError } from '@/lib/confirm';
 import { colors, fonts, shadow } from '@/theme/tokens';
 
 const MIN_SLIDES = 3;
@@ -39,15 +40,16 @@ function SmallButton({ icon: Icon, label, onPress, disabled, tint = colors.brand
 export default function EditDeck() {
   const { deck } = useDeckRoute();
   const current = useDeckSlides(deck);
-  const [draft, setDraft] = useState<Item[]>(() => withIds(current));
-  const [dirty, setDirty] = useState(false);
+  const loaded = useDeckSlidesLoaded(deck);
+  // null = not edited yet: show the deck's slides as saved (they may still be loading).
+  const [edits, setEdits] = useState<Item[] | null>(null);
+  const [saving, setSaving] = useState(false);
+  const draft = edits ?? withIds(current);
+  const dirty = edits !== null;
 
   if (!deck) return <DeckGone title="Edit deck" />;
 
-  const update = (next: Item[]) => {
-    setDraft(next);
-    setDirty(true);
-  };
+  const update = (next: Item[]) => setEdits(next);
   const move = (i: number, by: -1 | 1) => {
     const j = i + by;
     if (j < 0 || j >= draft.length) return;
@@ -63,29 +65,41 @@ export default function EditDeck() {
   };
   const rename = (i: number, title: string) => update(draft.map((s, k) => (k === i ? { ...s, title: title.replace(/\s*\n\s*/g, ' ').slice(0, 60) } : s)));
 
-  const save = () => {
+  const save = async () => {
+    if (saving) return;
     // An emptied title falls back to that slide's title from before this edit.
     const slides = draft.map(({ uid, ...s }) => ({ ...s, title: s.title.trim() || current[uid]?.title || deck.title }));
-    saveDeck(deck.id, slides);
-    setDeckSlides(deck.id, slides.length);
-    renameDeck(deck.id, slides[0]!.title);
-    haptic.success();
-    router.back();
+    setSaving(true);
+    try {
+      // The first slide's title is the deck's name.
+      if (slides[0] && slides[0].title !== deck.title) await renameDeck(deck.id, slides[0].title);
+      await saveDeck(deck.id, slides);
+      haptic.success();
+      router.back();
+    } catch (e) {
+      showError('Couldn’t save the deck', errorMessage(e));
+      haptic.warn();
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Goes back to the deck as it was built (its photos and slide count). Applied on Save.
+  // Goes back to the deck as it was built (its photos and slide count).
   const reset = () =>
-    confirmAction('Reset this deck?', 'Slide order, titles and removed slides go back to how the deck was built. Nothing changes until you save.', 'Reset', () => {
-      setDraft(withIds(builtSlides(deck)));
-      setDirty(true);
-      haptic.select();
+    confirmAction('Reset this deck?', 'Slide order, titles and removed slides go back to how the deck was built.', 'Reset', () => {
+      resetDeck(deck.id)
+        .then(() => {
+          setEdits(null);
+          haptic.select();
+        })
+        .catch((e) => showError('Couldn’t reset the deck', errorMessage(e)));
     });
 
   return (
     <PageShell
       title="Edit deck"
       right={<IconButton icon={RotateCcw} label="Reset to as built" tint={colors.inkSoft} onPress={reset} />}
-      footer={<SubmitButton label={dirty ? 'Save changes' : 'No changes'} loadingLabel="" loading={false} disabled={!dirty} onPress={save} />}
+      footer={<SubmitButton label={dirty ? 'Save changes' : 'No changes'} loadingLabel="Saving…" loading={saving} disabled={!dirty || !loaded} onPress={save} />}
     >
       <Text className="mb-3 px-2 font-jk text-[13px] text-muted">
         {deck.type} · {draft.length} slides · the first title is the deck’s name

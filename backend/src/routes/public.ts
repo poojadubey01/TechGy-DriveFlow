@@ -7,7 +7,7 @@ import { brandKits, clients, decks, deckVisits, feedback, photos, users } from '
 import { ACCENTS, DECK_TYPES, MIN_DECK_PHOTOS, PHOTO_CHOICES, SLIDE_CHOICES, SLIDES_MAX, SLIDES_MIN, TEMPLATES } from '../domain/catalog.js';
 import { isShareId, newToken, sha256 } from '../lib/crypto.js';
 import { deviceFromUserAgent } from '../lib/device.js';
-import { AppError, badRequest, forbidden, notFound } from '../lib/errors.js';
+import { AppError, badRequest, forbidden, notFound, unauthorized } from '../lib/errors.js';
 import { brandFallback } from '../services/account.js';
 import { notify } from '../services/notify.js';
 import { sendPhoto } from './drive.js';
@@ -68,6 +68,24 @@ export async function publicRoutes(app: FastifyInstance, ctx: Ctx) {
       .where(and(eq(photos.id, photoId), eq(photos.userId, deck.userId)));
     if (!photo) throw notFound('That photo');
     return sendPhoto(ctx, reply, photo, 'private, max-age=600');
+  });
+
+  /**
+   * A photo's bytes, for the signed URLs the API hands out (`?exp=&sig=`), or for a signed-in owner
+   * without a signature. A signature only opens the one photo it was made for, until it expires.
+   */
+  app.get('/photos/:id/image', limited, async (req, reply) => {
+    const { id } = parse(z.object({ id: z.uuid() }), req.params);
+    const q = parse(z.object({ exp: z.coerce.number().int().optional(), sig: z.string().max(100).optional() }), req.query);
+    const signed = q.exp !== undefined && q.sig !== undefined && q.exp > Date.now() / 1000 && ctx.secrets.macEquals(`photo:${id}:${q.exp}`, q.sig);
+    const [photo] = await db.select().from(photos).where(eq(photos.id, id));
+    if (!signed) {
+      const auth = await loadAuth(ctx, req);
+      if (!auth) throw unauthorized('This photo link has expired. Reload the page.');
+      if (!photo || photo.userId !== auth.user.id) throw notFound('That photo');
+    }
+    if (!photo) throw notFound('That photo');
+    return sendPhoto(ctx, reply, photo, 'private, max-age=86400');
   });
 
   /** The client opened the link: starts a visit and tells the owner. Returns a token for progress reports. */

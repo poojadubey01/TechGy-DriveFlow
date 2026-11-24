@@ -2,11 +2,10 @@ import { router } from 'expo-router';
 import { Ellipsis, Eye } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
-import { deckActivity } from '@/data/activity';
-import type { Deck } from '@/data/app';
+
+import { type Deck, deckClient } from '@/data/app';
 import { useBrand } from '@/data/brand';
-import { getClient } from '@/data/clients';
-import { useDeckSlides } from '@/data/deckEdits';
+
 import { useDeckTemplate } from '@/data/templates';
 import { colors, shadow } from '@/theme/tokens';
 
@@ -19,12 +18,12 @@ import { PressableScale } from './ui/PressableScale';
  * The ••• button sits next to the card (not inside it) so screen readers can reach both.
  */
 export function DeckCard({ deck, width, onMore }: { deck: Deck; width: number; onMore?: () => void }) {
-  const client = getClient(deck.clientId);
+  const client = deckClient(deck);
   const template = useDeckTemplate(deck.id);
-  const slides = useDeckSlides(deck);
   const brand = useBrand();
-  const opens = deckActivity(deck.id, slides.length).visits.length;
-  const cover = slides[0];
+  const opens = deck.opens;
+  // The list already has each deck's cover photo, so cards don't need to load every deck's slides.
+  const cover = deck.cover ? { source: deck.cover, title: deck.title } : null;
   const inner = width - 16;
   const narrow = width < 210;
 
@@ -33,7 +32,7 @@ export function DeckCard({ deck, width, onMore }: { deck: Deck; width: number; o
       <PressableScale
         onPress={() => router.push({ pathname: '/ready', params: { deck: deck.id } })}
         scaleTo={0.97}
-        accessibilityLabel={`${deck.title}, ${client.name}. ${deck.type}, ${slides.length} slides, ${deck.when}. ${
+        accessibilityLabel={`${deck.title}, ${client.name}. ${deck.type}, ${deck.slides} slides, ${deck.when}. ${
           opens ? `Opened ${opens} ${opens === 1 ? 'time' : 'times'}` : 'Not opened yet'
         }`}
         style={{ borderRadius: 20, backgroundColor: colors.card, boxShadow: shadow.soft, padding: 8 }}
@@ -64,7 +63,7 @@ export function DeckCard({ deck, width, onMore }: { deck: Deck; width: number; o
             </View>
             <Text className="flex-1 font-jk text-[12px] text-muted" numberOfLines={1}>
               {/* Narrow grid cards skip the date (the grid is newest first); wider cards show it. */}
-              {narrow ? `${slides.length} slides` : `${slides.length} slides · ${deck.when}`}
+              {narrow ? `${deck.slides} slides` : `${deck.slides} slides · ${deck.when}`}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 }}>

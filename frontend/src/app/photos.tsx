@@ -6,7 +6,7 @@ import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 
 import { SubmitButton } from '@/components/auth/Form';
 import { PageShell } from '@/components/PageShell';
-import { getClient, MIN_DECK_PHOTOS } from '@/data/clients';
+import { MIN_DECK_PHOTOS, useClient } from '@/data/clients';
 import { deliverPick } from '@/data/photoPick';
 import { haptic } from '@/hooks/haptics';
 import { colors } from '@/theme/tokens';
@@ -18,12 +18,12 @@ import { colors } from '@/theme/tokens';
  */
 export default function Photos() {
   const params = useLocalSearchParams<{ client?: string; mode?: string }>();
-  const client = getClient(params.client);
+  const client = useClient(params.client);
   const picking = params.mode === 'pick';
   const { width } = useWindowDimensions();
   const tile = Math.floor((width - 32 - 16) / 3);
   const [selected, setSelected] = useState<Set<number>>(() => new Set());
-  const photos = client.gallery;
+  const photos = client?.gallery ?? [];
 
   const toggle = (i: number) => {
     haptic.select();
@@ -78,7 +78,7 @@ export default function Photos() {
       }
     >
       <Text className="mb-3 px-2 font-jk text-[13px] text-muted">
-        {client.name} · {client.photos} photos in Drive · showing the latest {photos.length}
+        {client ? `${client.name} · ${client.photos} photos in Drive` : 'Client not found'}
       </Text>
       <View className="flex-row flex-wrap gap-2" accessibilityRole={picking ? 'list' : undefined}>
         {photos.map((src, i) => {

@@ -17,7 +17,7 @@ import { PillButton } from '@/components/ui/Button';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { Toast } from '@/components/ui/Toast';
 import { TopBar } from '@/components/ui/TopBar';
-import { deckActivity } from '@/data/activity';
+
 import { useBrand } from '@/data/brand';
 import { useDeckSlides } from '@/data/deckEdits';
 import { getTemplate, useDeckTemplate } from '@/data/templates';
@@ -49,7 +49,7 @@ export default function Ready() {
   const slides = slideList.length;
   const coverH = Math.min(300, Math.max(190, Math.round(height * 0.3)));
   const templateName = getTemplate(template).name;
-  const opens = deckActivity(deck.id, slides).visits.length;
+  const opens = deck.opens;
   const go = (pathname: '/preview' | '/activity' | '/templates' | '/edit-deck') => router.push({ pathname, params: { deck: deck.id } });
 
   const download = async (ready: () => void) => {

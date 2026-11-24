@@ -173,7 +173,6 @@ It runs anywhere that runs Node, such as Render, Railway, Fly.io or a VM.
 
 ## Not built yet
 
-- Connecting the app's screens to this API. The app still uses its built-in sample data.
 - Push notifications. In-app notifications are built.
 - Team workspaces.
 - Server-side PDF rendering. The app builds the PDF itself.

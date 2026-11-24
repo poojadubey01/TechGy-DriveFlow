@@ -8,8 +8,8 @@ import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, wi
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { type Deck, shareLink } from '@/data/app';
-import { getClient } from '@/data/clients';
+import { type Deck, deckClient, shareLink } from '@/data/app';
+
 import { setShare, useShare } from '@/data/sharing';
 import { haptic } from '@/hooks/haptics';
 import { confirmAction } from '@/lib/confirm';
@@ -35,7 +35,7 @@ type Props = {
 export function ShareSheet({ deck, open, onClose, onToast }: Props) {
   const insets = useSafeAreaInsets();
   const { height: winH } = useWindowDimensions();
-  const client = getClient(deck.clientId);
+  const client = deckClient(deck);
   const key = deck.id;
   const share = useShare(key);
   const link = shareLink(deck);

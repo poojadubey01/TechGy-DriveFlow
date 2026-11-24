@@ -80,7 +80,7 @@ describe('clients and photos', () => {
     const h = res.body.clients[0];
     expect(h).toMatchObject({ name: 'Highrize Villas', meta: 'Luxury villas', photos: 7, decks: 0 });
     expect(h.cover).toMatchObject({ name: 'highrize.jpg', kind: 'exterior' });
-    expect(h.cover.url).toBe(`/photos/${h.cover.id}/image`);
+    expect(h.cover.url).toMatch(new RegExp(`^/photos/${h.cover.id}/image\\?exp=\\d+&sig=[\\w-]+$`));
   });
 
   it('labels photos by what they show', async () => {
@@ -112,17 +112,27 @@ describe('clients and photos', () => {
     expect(vague.body.note).toMatch(/couldn’t match/);
   });
 
-  it('serves the photo bytes to the owner only', async () => {
-    const photo = (await call(t.app, 'GET', `/clients/${highrize}`, { token })).body.photos[0];
-    const img = await call(t.app, 'GET', photo.url, { token });
+  it('serves photo bytes through its signed URL, or to the owner with no signature', async () => {
+    const [photo, other] = (await call(t.app, 'GET', `/clients/${highrize}`, { token })).body.photos;
+    // The signed URL works on its own (image views, <img> tags, the PDF).
+    const img = await call(t.app, 'GET', photo.url);
     expect(img.status).toBe(200);
     expect(img.headers['content-type']).toBe('image/jpeg');
     expect(img.raw.subarray(0, 2).toString('hex')).toBe('ffd8'); // JPEG magic bytes
 
+    const bare = `/photos/${photo.id}/image`;
     const stranger = (await newUser(t)).token;
-    expect((await call(t.app, 'GET', photo.url, { token: stranger })).status).toBe(404);
+    expect((await call(t.app, 'GET', bare, { token })).status).toBe(200);
+    expect((await call(t.app, 'GET', bare, { token: stranger })).status).toBe(404);
+    expect((await call(t.app, 'GET', bare)).status).toBe(401);
     expect((await call(t.app, 'GET', `/clients/${highrize}`, { token: stranger })).status).toBe(404);
-    expect((await call(t.app, 'GET', photo.url)).status).toBe(401);
+
+    // A signature only opens its own photo, can't be edited and expires.
+    const query = photo.url.split('?')[1];
+    expect((await call(t.app, 'GET', `/photos/${other.id}/image?${query}`)).status).toBe(401);
+    expect((await call(t.app, 'GET', photo.url.replace(/sig=./, 'sig=x'))).status).toBe(401);
+    const past = Math.floor(Date.now() / 1000) - 60;
+    expect((await call(t.app, 'GET', photo.url.replace(/exp=\d+/, `exp=${past}`))).status).toBe(401);
   });
 
   it('keeps a kind fixed by hand across syncs', async () => {

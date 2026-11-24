@@ -1,13 +1,13 @@
 import { router } from 'expo-router';
 import { Download, Eye, Laptop, type LucideIcon, Smartphone, Tablet } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 import { DeckGone } from '@/components/DeckGone';
 import { PageShell, SectionLabel } from '@/components/PageShell';
 import { SettingsCard } from '@/components/Settings';
 import { SlideView } from '@/components/SlideView';
 import { PillButton } from '@/components/ui/Button';
-import { type Device, deckActivity, formatDuration } from '@/data/activity';
+import { type Device, formatDuration, useDeckActivity } from '@/data/activity';
 import { useBrand } from '@/data/brand';
 import { useDeckSlides } from '@/data/deckEdits';
 import { useDeckTemplate } from '@/data/templates';
@@ -37,11 +37,11 @@ export default function Activity() {
   const slides = useDeckSlides(deck);
   const template = useDeckTemplate(deck?.id ?? '');
   const brand = useBrand();
+  const { data: a, loading, error, reload } = useDeckActivity(deck?.id);
 
   if (!deck || !client) return <DeckGone title="Client activity" />;
 
   const b = brand.on ? { name: brand.name, accent: brand.accent } : null;
-  const a = deckActivity(deck.id, slides.length);
   const max = Math.max(1, ...a.perSlide);
   const top = a.perSlide.indexOf(max);
 
@@ -53,7 +53,20 @@ export default function Activity() {
         {client.name} · {deck.title}
       </Text>
 
-      {a.visits.length === 0 ? (
+      {loading && a.visits.length === 0 ? (
+        <View className="items-center py-12" accessibilityLabel="Loading client activity">
+          <ActivityIndicator color={colors.brand} />
+        </View>
+      ) : error && a.visits.length === 0 ? (
+        <View className="items-center rounded-[22px] bg-card px-6 py-8" style={{ boxShadow: shadow.soft }}>
+          <Text className="text-center font-jk-medium text-[14px]" style={{ color: colors.danger }}>
+            {error}
+          </Text>
+          <View style={{ alignSelf: 'stretch', marginTop: 16 }}>
+            <PillButton label="Try again" variant="secondary" onPress={reload} />
+          </View>
+        </View>
+      ) : a.visits.length === 0 ? (
         <View className="items-center rounded-[22px] bg-card px-6 py-8" style={{ boxShadow: shadow.soft }}>
           <View style={{ width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.sky }}>
             <Eye size={28} color={colors.brand} strokeWidth={1.8} />
@@ -144,7 +157,6 @@ export default function Activity() {
           </SettingsCard>
           <Text className="mt-3 px-2 text-center font-jk text-[12px] leading-[18px] text-muted">
             Counted when {client.name} opens the share link. Your own previews don’t count.
-            {__DEV__ ? ' Demo build: sample activity.' : ''}
           </Text>
         </>
       )}

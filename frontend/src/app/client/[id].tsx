@@ -3,14 +3,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft, FolderOpen, Plus } from 'lucide-react-native';
-import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PillButton, IconButton } from '@/components/ui/Button';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { useDecks } from '@/data/app';
 import { DeckCard } from '@/components/DeckCard';
-import { findClient } from '@/data/clients';
+import { useClient, useClientsStatus } from '@/data/clients';
 import { PageShell } from '@/components/PageShell';
 import { SubmitButton } from '@/components/auth/Form';
 import { useSession } from '@/data/session';
@@ -20,11 +20,22 @@ import { FadeEdges } from '@/components/FadeEdges';
 /** Client details — Drive photos, past decks and a quick "New deck". */
 export default function ClientDetails() {
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const client = findClient(id);
+  const client = useClient(id);
+  const status = useClientsStatus();
   const { drive } = useSession();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const allDecks = useDecks();
+
+  if (!client && (status === 'loading' || status === 'idle')) {
+    return (
+      <PageShell title="Client">
+        <View className="items-center pt-16" accessibilityLabel="Loading client">
+          <ActivityIndicator color={colors.brand} />
+        </View>
+      </PageShell>
+    );
+  }
 
   if (!client) {
     return (

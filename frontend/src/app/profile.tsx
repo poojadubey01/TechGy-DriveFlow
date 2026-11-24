@@ -10,10 +10,12 @@ import { Toggle } from '@/components/ui/Toggle';
 import { useBrand } from '@/data/brand';
 import { setSettings, useSettings } from '@/data/settings';
 import { getTemplate, useDefaultTemplate } from '@/data/templates';
-import { resetWorkspace } from '@/data/workspace';
-import { confirmAction } from '@/lib/confirm';
+import { errorMessage } from '@/api/client';
+import { confirmAction, showError } from '@/lib/confirm';
 import { resetTo } from '@/lib/nav';
-import { disconnectDrive, initials, signOut as endSession, useSession } from '@/data/session';
+import { initials, useSession } from '@/data/session';
+import { signOut as endSession } from '@/services/auth';
+import { disconnectDrive } from '@/services/drive';
 import { colors, shadow } from '@/theme/tokens';
 
 const SIZES = ['8 slides', '12 slides', '15 slides'] as const;
@@ -52,13 +54,13 @@ export default function Profile() {
   // Signing out also clears this account's decks, brand kit and settings from the phone.
   const signOut = () =>
     confirmAction('Sign out?', 'Your decks stay in your account. You can sign back in any time.', 'Sign out', () => {
-      endSession();
-      resetWorkspace('seed');
-      resetTo('/');
+      void endSession().then(() => resetTo('/'));
     });
 
   const confirmDisconnect = () =>
-    confirmAction('Disconnect Google Drive?', 'DriveFlow will stop reading your projects folder. Your files are not touched.', 'Disconnect', disconnectDrive);
+    confirmAction('Disconnect Google Drive?', 'DriveFlow will stop reading your projects folder. Your files are not touched.', 'Disconnect', () => {
+      disconnectDrive().catch((e) => showError('Could not disconnect Drive', errorMessage(e)));
+    });
 
   return (
     <PageShell title="Profile">

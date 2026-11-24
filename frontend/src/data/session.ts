@@ -1,58 +1,78 @@
-import { useSyncExternalStore } from 'react';
+import type { ApiDrive, ApiUser } from '@/api/types';
 
-export type User = { name: string; email: string; company?: string; /** How they signed in; Google accounts have no DriveFlow password. */ provider?: 'email' | 'google' };
+import { createStore, relativeTime } from './store';
+
+export type User = {
+  id?: string;
+  name: string;
+  email: string;
+  company?: string;
+  /** How the account was created; Google accounts may have no DriveFlow password. */
+  provider?: 'email' | 'google';
+  hasPassword?: boolean;
+};
 
 export type DriveState = {
   connected: boolean;
   /** Google account the Drive belongs to. */
   account: string | null;
-  /** The projects folder DriveFlow reads (one sub-folder per client). */
+  /** The projects folder DriveFlow reads (one sub-folder per client): its name and Drive id. */
   folder: string | null;
+  folderId: string | null;
+  /** When it was last synced, as a label ("5 min ago"), and as an ISO time. */
   lastSync: string | null;
+  lastSyncAt: string | null;
 };
 
-export type Session = { user: User | null; drive: DriveState };
+/** 'restoring' while the saved sign-in is checked at launch. */
+export type Session = { user: User | null; drive: DriveState; status: 'restoring' | 'ready' };
 
-const DISCONNECTED: DriveState = { connected: false, account: null, folder: null, lastSync: null };
+const DISCONNECTED: DriveState = { connected: false, account: null, folder: null, folderId: null, lastSync: null, lastSyncAt: null };
 
-/** In-memory session for now (resets when the app restarts). Replace with secure storage + backend. */
-let state: Session = { user: null, drive: DISCONNECTED };
-const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((l) => l());
-const subscribe = (l: () => void) => {
-  listeners.add(l);
-  return () => listeners.delete(l);
-};
+const store = createStore<Session>({ user: null, drive: DISCONNECTED, status: 'restoring' });
+
+export const getSession = store.get;
+
+export function userFromApi(u: ApiUser): User {
+  return { id: u.id, name: u.name, email: u.email, company: u.company, provider: u.provider, hasPassword: u.hasPassword };
+}
+
+export function driveFromApi(d: ApiDrive): DriveState {
+  if (!d.connected) return DISCONNECTED;
+  return {
+    connected: true,
+    account: d.account,
+    folder: d.folder?.name ?? null,
+    folderId: d.folder?.id ?? null,
+    lastSync: d.lastSync ? relativeTime(d.lastSync) : null,
+    lastSyncAt: d.lastSync,
+  };
+}
 
 export function setUser(user: User) {
-  state = { ...state, user };
-  emit();
+  store.set((s) => ({ ...s, user }));
 }
 
-/** Edits the signed-in user's profile (name, company). */
-export function updateUser(patch: Partial<Pick<User, 'name' | 'company'>>) {
-  if (!state.user) return;
-  state = { ...state, user: { ...state.user, ...patch } };
-  emit();
+/** Local update after the API saved the profile (see services/account). */
+export function updateUserLocal(patch: Partial<Pick<User, 'name' | 'company'>>) {
+  store.set((s) => (s.user ? { ...s, user: { ...s.user, ...patch } } : s));
 }
 
-export function setDrive(patch: Partial<DriveState>) {
-  state = { ...state, drive: { ...state.drive, ...patch } };
-  emit();
+export function setDriveState(drive: DriveState) {
+  store.set((s) => ({ ...s, drive }));
 }
 
-export function disconnectDrive() {
-  state = { ...state, drive: DISCONNECTED };
-  emit();
+export function setSessionReady() {
+  store.set((s) => (s.status === 'ready' ? s : { ...s, status: 'ready' }));
 }
 
-export function signOut() {
-  state = { user: null, drive: DISCONNECTED };
-  emit();
+/** Clears the signed-in person from memory (the token is cleared by services/auth). */
+export function clearSession() {
+  store.set({ user: null, drive: DISCONNECTED, status: 'ready' });
 }
 
 export function useSession(): Session {
-  return useSyncExternalStore(subscribe, () => state, () => state);
+  return store.use();
 }
 
 /** First name for greetings; empty when signed out (callers word around it). */

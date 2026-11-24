@@ -8,13 +8,14 @@ import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/70
 import { useFonts } from 'expo-font';
 import { type ErrorBoundaryProps, Stack, useRootNavigationState, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CrashScreen } from '@/components/CrashScreen';
 import { useSession } from '@/data/session';
-import { resetTo } from '@/lib/nav';
+import { goAfterSignIn, resetTo } from '@/lib/nav';
+import { restoreSession } from '@/services/auth';
 import { colors } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -30,17 +31,29 @@ const SIGNED_IN_ONLY = new Set([
   'client', 'decks', 'profile', 'account', 'change-password', 'help', 'brand-kit', 'connect-drive', 'choose-folder', 'syncing',
 ]);
 
-/** Signed out (sign-out, deleted account, an old deep link): app screens go back to Welcome. */
+/**
+ * Signed out (sign-out, deleted account, expired session, an old deep link): app screens go back to
+ * Welcome. Signed back in at launch: Welcome is skipped.
+ */
 function AuthGuard() {
-  const { user } = useSession();
+  const { user, status } = useSession();
   const segments = useSegments();
-  const ready = !!useRootNavigationState()?.key;
+  const ready = !!useRootNavigationState()?.key && status === 'ready';
   const first = segments[0] ?? '';
+  const launched = useRef(false);
   useEffect(() => {
     if (ready && !user && SIGNED_IN_ONLY.has(first)) resetTo('/');
   }, [first, ready, user]);
+  useEffect(() => {
+    if (!ready || launched.current) return;
+    launched.current = true;
+    if (user && first === '') goAfterSignIn();
+  }, [first, ready, user]);
   return null;
 }
+
+// Check the saved sign-in once, while the splash screen is up.
+void restoreSession();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -50,12 +63,15 @@ export default function RootLayout() {
     PlusJakartaSans_700Bold,
   });
 
-  useEffect(() => {
-    if (loaded || error) SplashScreen.hideAsync().catch(() => undefined);
-  }, [loaded, error]);
+  const { status } = useSession();
+  const booted = (loaded || !!error) && status === 'ready';
 
-  // Keep the splash up until fonts are ready; if they fail, render with system fonts rather than hang.
-  if (!loaded && !error) return null;
+  useEffect(() => {
+    if (booted) SplashScreen.hideAsync().catch(() => undefined);
+  }, [booted]);
+
+  // Keep the splash up until fonts and the saved sign-in are ready; failed fonts fall back to system fonts.
+  if (!booted) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.canvas }}>

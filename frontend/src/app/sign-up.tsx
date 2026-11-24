@@ -5,10 +5,9 @@ import { Text, View } from 'react-native';
 
 import { AuthShell } from '@/components/auth/AuthShell';
 import { Checkbox, GoogleButton, OrDivider, StrengthBar, SubmitButton, TextField, type TextInputRef, TextLink } from '@/components/auth/Form';
-import { setUser } from '@/data/session';
 import { haptic } from '@/hooks/haptics';
 import { useMounted } from '@/hooks/useMounted';
-import { resetTo } from '@/lib/nav';
+import { goAfterSignIn } from '@/lib/nav';
 import { AuthError, isEmail, isStrongEnough, passwordStrength, signInWithGoogle, signUpWithEmail } from '@/services/auth';
 import { colors } from '@/theme/tokens';
 
@@ -31,10 +30,10 @@ export default function SignUp() {
   const clear = (key: keyof Errors) => setErrors((e) => (e[key] || e.form ? { ...e, [key]: undefined, form: undefined } : e));
 
   const mounted = useMounted();
-  const toDrive = () => {
+  const signedIn = () => {
     if (!mounted.current) return;
     haptic.success();
-    resetTo('/connect-drive');
+    goAfterSignIn();
   };
 
   const submit = async () => {
@@ -50,11 +49,10 @@ export default function SignUp() {
     }
     setLoading(true);
     try {
-      const user = await signUpWithEmail({ name, email, company, password });
+      const sent = await signUpWithEmail({ name, email, company, password });
       if (!mounted.current) return;
-      setUser(user);
       haptic.tap();
-      router.push({ pathname: '/verify-email', params: { email: user.email } });
+      router.push({ pathname: '/verify-email', params: { email: sent.email } });
     } catch (e) {
       setErrors({ form: e instanceof AuthError ? e.message : 'Something went wrong. Try again.' });
       haptic.warn();
@@ -66,8 +64,11 @@ export default function SignUp() {
   const withGoogle = async () => {
     setGoogle(true);
     try {
-      setUser(await signInWithGoogle());
-      toDrive();
+      await signInWithGoogle();
+      signedIn();
+    } catch (e) {
+      setErrors({ form: e instanceof AuthError ? e.message : 'Google sign-in didn’t work. Try again.' });
+      haptic.warn();
     } finally {
       setGoogle(false);
     }

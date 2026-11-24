@@ -1,4 +1,8 @@
-import { useSyncExternalStore } from 'react';
+import { api } from '@/api/client';
+import type { ApiDeckDetail } from '@/api/types';
+
+import { getDeck, patchDeck, upsertDeck, useDecks } from './app';
+import { setSettings, useSettings } from './settings';
 
 /** Deck templates: how every slide is laid out (app preview, client view and PDF). */
 export const templates = [
@@ -19,37 +23,29 @@ export function getTemplate(id: string | undefined): Template {
   return templates.find((t) => t.id === id) ?? templates[0];
 }
 
-/** Default for new decks + the template chosen for each deck (key: deckKey). In memory for now. */
-let state: { fallback: TemplateId; decks: ReadonlyMap<string, TemplateId> } = { fallback: 'classic', decks: new Map() };
-const listeners = new Set<() => void>();
-const subscribe = (l: () => void) => {
-  listeners.add(l);
-  return () => listeners.delete(l);
-};
-const emit = () => listeners.forEach((l) => l());
-const snapshot = () => state;
-
+/** Template for new decks (a Profile setting). */
 export function setDefaultTemplate(id: TemplateId) {
-  state = { ...state, fallback: id };
-  emit();
+  setSettings({ defaultTemplate: id });
 }
 
-export function setDeckTemplate(key: string, id: TemplateId) {
-  state = { ...state, decks: new Map(state.decks).set(key, id) };
-  emit();
-}
-
-export function clearTemplates() {
-  state = { fallback: 'classic', decks: new Map() };
-  emit();
+/** Changes a deck's template right away and saves it. */
+export function setDeckTemplate(deckId: string, id: TemplateId) {
+  const before = getDeck(deckId)?.template;
+  patchDeck(deckId, { template: id });
+  api<ApiDeckDetail>(`/decks/${deckId}`, { method: 'PATCH', body: { template: id } })
+    .then((d) => upsertDeck(d))
+    .catch(() => {
+      if (before) patchDeck(deckId, { template: before });
+    });
 }
 
 export function useDefaultTemplate(): TemplateId {
-  return useSyncExternalStore(subscribe, snapshot, snapshot).fallback;
+  return useSettings().defaultTemplate;
 }
 
-/** The deck's template, or the default when none was picked for it. */
-export function useDeckTemplate(key: string): TemplateId {
-  const s = useSyncExternalStore(subscribe, snapshot, snapshot);
-  return s.decks.get(key) ?? s.fallback;
+/** The deck's template, or the default when the deck isn't loaded. */
+export function useDeckTemplate(deckId: string): TemplateId {
+  const deck = useDecks().find((d) => d.id === deckId);
+  const fallback = useDefaultTemplate();
+  return deck?.template ?? fallback;
 }

@@ -13,7 +13,9 @@ import type { GlowBlob } from '@/components/glow/types';
 import { KineticHeadline } from '@/components/KineticHeadline';
 import { TextLink } from '@/components/auth/Form';
 import { PillButton } from '@/components/ui/Button';
-import { setUser, useSession } from '@/data/session';
+import { errorMessage } from '@/api/client';
+import { showError } from '@/lib/confirm';
+import { goAfterSignIn } from '@/lib/nav';
 import { signInWithGoogle } from '@/services/auth';
 import { colors, fonts, glow } from '@/theme/tokens';
 
@@ -31,17 +33,17 @@ export default function Welcome() {
   const insets = useSafeAreaInsets();
   const compact = height < 720;
   const headline = Math.min(compact ? 56 : 68, Math.round(width * 0.175));
-  const { drive } = useSession();
   const [connecting, setConnecting] = useState(false);
 
-  // Google sign-in (mock service), then Drive onboarding unless it's already set up.
+  // Google sign-in, then Drive onboarding unless it's already set up.
   const continueWithGoogle = async () => {
     if (connecting) return;
     setConnecting(true);
     try {
-      setUser(await signInWithGoogle());
-      if (drive.connected && drive.folder) router.replace('/home');
-      else router.push('/connect-drive');
+      await signInWithGoogle();
+      goAfterSignIn();
+    } catch (e) {
+      showError('Google sign-in didn’t work', errorMessage(e));
     } finally {
       setConnecting(false);
     }

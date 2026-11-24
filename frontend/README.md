@@ -11,6 +11,8 @@ It runs on **Android, iOS and web** from one codebase.
 
 ## Run it
 
+The app gets its data from the DriveFlow API in [`../backend`](../backend). Start that first (in the backend folder: `npm install`, `npm run seed`, `npm run dev`). It runs on port 4000.
+
 You need [Node.js 20+](https://nodejs.org) installed. Then, in this folder:
 
 ```powershell
@@ -30,6 +32,10 @@ npx expo run:android
 ```
 
 (For a shareable install, use EAS Build: `npx eas-cli@latest build --profile development`.)
+
+**Where the app finds the API:** in development it uses the same computer that serves the app, on port 4000, so a phone, the emulator and the browser all reach the API on your PC without any setup. For a real build, set `EXPO_PUBLIC_API_URL` (for example `https://api.driveflow.app`).
+
+**Trying it:** "Continue with Google" signs in as the demo account from `npm run seed` (demo@driveflow.local). That account already has Drive connected, 4 clients and 5 decks. You can also create a new account: the 6-digit email code shows in the API's log and at http://localhost:4000/dev/outbox. Connecting Drive then uses the API's sample Drive.
 
 ## Screens
 
@@ -58,7 +64,7 @@ Motion is kept deliberate: one signature moment per screen, plus motion that ans
 | `/client/[id]` | Client details | cover photo, stats, Drive folder, latest photos, past decks; **New deck for …** |
 | `/photos` | Photos | the client's Drive photos; from the chat (`mode=pick`) tap to choose, numbers show the order, **Use N photos** answers the chat |
 | `/decks` | My decks | 2-column grid of deck covers in each deck's template, type filters, opened / not opened; **•••** → Open, Rename, Client activity, Delete; decks you build in the chat appear here |
-| `/activity` | Client activity | opens, time spent, last opened, PDF downloads, time on each slide (most viewed marked) and each visit by device; empty state until the client opens the link (sample data, see below) |
+| `/activity` | Client activity | opens, time spent, last opened, PDF downloads, time on each slide (most viewed marked) and each visit by device; empty state until the client opens the link (recorded by the API) |
 | `/profile` | Profile & settings | account card (→ Account), Google Drive status, Brand kit (→ page), default deck size, notification switches, Help & support, Privacy / Terms, sign out (confirm → welcome) |
 | `/account` | Account | edit name and company; sign-in email (read-only); Change password (Google accounts: managed by Google); Delete account |
 | `/change-password` | Change password | current + new (strength meter) + confirm → "Password changed" |
@@ -108,17 +114,19 @@ src/
     motion.ts          springs, durations, easings, stagger, entering presets
     interop.ts         lets NativeWind className work on Reanimated views
   hooks/               haptics (safe no-op on web), useLoop (reduced-motion aware clock), useCountdown (resend timers)
-  data/clients.ts      sample clients + photos (swap for your API)
-  data/app.ts          decks (each with its own id + unguessable share code) and notifications
-  data/settings.ts     Profile settings (default deck size, notification switches)
-  data/workspace.ts    resetWorkspace(): clears the account's data on sign-out / delete account
-  data/session.ts      signed-in user + Google Drive state (in memory)
-  data/deckEdits.ts    saved slide edits per deck id; useDeckSlides() is what every screen shows (cover = deck name)
+  api/                 client.ts (fetch + errors + sign-in token), config.ts (API address), tokenStore.ts
+                       (token in the device keychain / localStorage on web), types.ts (API shapes)
+  data/clients.ts      clients + photos from the API (each photo is an expo-image source with a signed URL)
+  data/app.ts          decks and notifications from the API (create, rename, delete, read state)
+  data/settings.ts     Profile settings, saved to the account
+  data/workspace.ts    loadWorkspace() after sign-in; resetWorkspace() on sign-out / delete account
+  data/session.ts      signed-in user + Google Drive state
+  data/deckEdits.ts    each deck's slides from the API; useDeckSlides() is what every screen shows (cover = deck name)
   data/photoPick.ts    hands the photo picker's choice back to the chat
-  data/brand.ts        brand kit (on/off, name, accent colour), in memory
-  data/templates.ts    the 4 deck templates + default template + each deck's choice, in memory
-  data/sharing.ts      per-deck share link state (active, PDF download allowed), in memory
-  services/            auth.ts + drive.ts — MOCK sign-in and Drive; swap for real Google/backend calls
+  data/brand.ts        brand kit (on/off, name, accent colour), saved to the account
+  data/templates.ts    the 4 deck templates; the default and each deck's choice are saved via the API
+  data/sharing.ts      per-deck share link (on/off, PDF download allowed, new link), saved via the API
+  services/            auth.ts, drive.ts, account.ts, support.ts: the API calls the screens use
 assets/images/         villa photos and DriveFlow logos
 ```
 
@@ -170,19 +178,28 @@ npm run doctor
 
 ## Security notes
 
-- No network calls, no API keys, no analytics, no secrets in the code. All data is local sample data.
+- The app only talks to the DriveFlow API. No API keys, analytics or secrets are in the code. The sign-in token is kept in the device keychain (expo-secure-store), or in localStorage on web.
+- Photo URLs carry a signature that expires after a day or two, so images load without the token and links can't be reused for long.
 - Route params are validated (`getClient`, `parseSlides`) so a bad deep link can't crash a screen. Message input is length-limited.
-- Sharing uses the system share sheet / `mailto:` / clipboard only. The PDF is built on the phone from bundled images (no upload).
+- Sharing uses the system share sheet / `mailto:` / clipboard only. The PDF is built on the phone from the deck's photos (nothing is uploaded).
 - `npm audit` lists advisories in `picomatch` / `minimatch`. They are **build-time tooling only** (Metro, Tailwind, Babel); they are not in the app bundles (verified), and there is no patched `picomatch` release yet. Don't run `npm audit fix --force`: it would break the Expo SDK versions.
 
-## What is mocked (next steps for production)
+## Connected to the API (and what's next for production)
 
-- **Sign in, sign up, email codes, password reset/change, account deletion, Google sign-in, Google Drive and the support form are MOCKED** in `src/services/auth.ts`, `src/services/drive.ts` and `src/services/support.ts`: every call waits a moment and succeeds (any 6-digit code works except `000000`, which shows the error), so the flow can be designed and tested. To go live, replace those two files with real calls (Google sign-in via `expo-auth-session` with your OAuth client IDs, the `drive.readonly` scope, and your backend). The screens only use those functions.
-- **Session, decks, deck edits, brand kit, settings and share-link state** are in memory (signing out clears them via `resetWorkspace()`): signing in, the Drive folder and settings reset when the app restarts. Persist it with secure storage once real auth exists.
-- **AI replies and the build** are scripted on-device; replace with your API in `src/app/chat.tsx` and `src/app/creating.tsx`.
-- **Decks and client activity**: decks live in `useDecks()` (`src/data/app.ts`, in memory, seeded with samples; building a deck adds it). Client activity (`src/data/activity.ts`) is **sample data**: record visits on the client view (`/p/[slug]`) in your backend and return them per deck.
-- **Clients and photos** come from `src/data/clients.ts`; replace with the Drive-backed API. Photo answers (Exteriors / Interiors / Night renders) use simple labels on the sample photos (`pickPhotos`); with real Drive photos, label them in your backend or with image tagging. If a folder has too few of a kind, the assistant tops up with the client's best photos and says so. The photo picker shows the bundled sample photos.
-- **Share links** point to `https://driveflow.app/p/<share code>` (12 random characters per deck, made on the phone for now: issue them server-side later). `app.json` declares iOS associated domains and an Android app link for `driveflow.app/p/*`; they start working once that domain serves the `apple-app-site-association` and `assetlinks.json` files. For clients without the app, host the web build (`npx expo export -p web`) there and keep decks + sharing state on your backend (today it's per device). The client view shows the sender saved on the deck (name, email for Contact).
+- **All data comes from the DriveFlow API** (`../backend`). That covers:
+  - accounts, sign-in that survives a restart, Drive connect, folder choice and sync;
+  - clients and photos;
+  - decks, which the server builds, plus renames, Edit deck, templates and share links;
+  - client activity, notifications, settings, the brand kit and Help feedback.
+- **Real Google sign-in and Google Drive** still use the API's development stand-ins:
+  - "Continue with Google" sends a development token (`DEV_GOOGLE_EMAIL` in `src/api/config.ts`).
+  - Connecting Drive sends `{ mock: true }`.
+  - To go live, use `expo-auth-session` with your Google OAuth client IDs. Send the ID token to `POST /auth/google`, and the authorization code (with the `drive.readonly` scope and offline access) to `POST /drive/connect`. Then turn `DEV_MOCKS` off on the server. The screens don't change: only `src/services/auth.ts` and `src/services/drive.ts` do.
+- **AI replies** in the chat are still scripted on the phone. The deck itself is built by the API.
+- **Photo labels** (exterior / interior / night) come from each photo's file name or its Drive description on the server. They can be fixed by hand with `PATCH /photos/:id`. If a folder has too few of a kind, the assistant tops up with the client's other photos and says so.
+- **Share links** point to `https://driveflow.app/p/<share code>`. The API issues the codes, and `/p/[slug]` loads the deck from the public API without sign-in and records each visit.
+  - `app.json` declares iOS associated domains and an Android app link for `driveflow.app/p/*`. They start working once that domain serves the `apple-app-site-association` and `assetlinks.json` files.
+  - For clients without the app, host the web build (`npx expo export -p web`) on that domain, with `EXPO_PUBLIC_API_URL` pointing at the API.
 - **Terms & Privacy** text in `src/app/legal.tsx` is a plain-language draft, not legal advice: have it reviewed and replace the [placeholders] (support email, company details, governing law).
 - **Font:** the redesign mock-ups used Lufga (commercial). The app ships **Plus Jakarta Sans** (free, open licence, the original DriveFlow font). To use Lufga, add your licensed font files and change `fonts` in `tokens.ts` and `tailwind.config.js`.
 - **App icon:** still the Expo default. Replace `assets/icon.png` and the `android-icon-*.png` files with the DriveFlow icon (1024×1024).

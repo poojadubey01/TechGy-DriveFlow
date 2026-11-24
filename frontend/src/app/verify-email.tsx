@@ -10,7 +10,7 @@ import { useSession } from '@/data/session';
 import { haptic } from '@/hooks/haptics';
 import { useCountdown } from '@/hooks/useCountdown';
 import { useMounted } from '@/hooks/useMounted';
-import { resetTo } from '@/lib/nav';
+import { goAfterSignIn } from '@/lib/nav';
 import { AuthError, resendCode, verifyEmail } from '@/services/auth';
 import { colors, shadow } from '@/theme/tokens';
 
@@ -38,7 +38,7 @@ export default function VerifyEmail() {
       await verifyEmail(email, value);
       if (!mounted.current) return;
       haptic.success();
-      resetTo('/connect-drive');
+      goAfterSignIn();
     } catch (e) {
       setError(e instanceof AuthError ? e.message : 'Something went wrong. Try again.');
       setCode('');
@@ -52,7 +52,7 @@ export default function VerifyEmail() {
     if (timer.left > 0) return;
     setError(null);
     try {
-      await resendCode(email);
+      await resendCode(email, 'verify');
       setResent(true);
       timer.restart();
       haptic.tap();

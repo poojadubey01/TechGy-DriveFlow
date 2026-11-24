@@ -6,7 +6,7 @@ import { Text, View } from 'react-native';
 
 import { AuthShell } from '@/components/auth/AuthShell';
 import { StepDots, SubmitButton, TextLink } from '@/components/auth/Form';
-import { setDrive, useSession } from '@/data/session';
+import { errorMessage } from '@/api/client';
 import { haptic } from '@/hooks/haptics';
 import { useMounted } from '@/hooks/useMounted';
 import { resetTo } from '@/lib/nav';
@@ -25,7 +25,6 @@ const POINTS: { icon: LucideIcon; title: string; body: string }[] = [
 export default function ConnectDrive() {
   const { from } = useLocalSearchParams<{ from?: string }>();
   const fromProfile = from === 'profile';
-  const { user } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mounted = useMounted();
@@ -35,13 +34,12 @@ export default function ConnectDrive() {
     setError(null);
     setLoading(true);
     try {
-      const { account } = await connectDrive(user?.email);
+      await connectDrive();
       if (!mounted.current) return;
-      setDrive({ connected: true, account });
       haptic.success();
       router.push({ pathname: '/choose-folder', params: fromProfile ? { from: 'profile' } : {} });
-    } catch {
-      setError('Could not connect to Google Drive. Check your connection and try again.');
+    } catch (e) {
+      setError(errorMessage(e, 'Could not connect to Google Drive. Check your connection and try again.'));
       haptic.warn();
     } finally {
       setLoading(false);

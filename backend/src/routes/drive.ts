@@ -30,13 +30,13 @@ function publicDrive(c: DriveRow | undefined) {
   };
 }
 
-export const publicPhoto = (p: PhotoRow) => ({
+export const publicPhoto = (ctx: Ctx, p: PhotoRow) => ({
   id: p.id,
   name: p.name,
   kind: p.kind as (typeof PHOTO_KINDS)[number] | null,
   width: p.width,
   height: p.height,
-  url: photoPath(p.id),
+  url: photoPath(ctx, p.id),
 });
 
 /** The client's current photos in Drive order. */
@@ -199,7 +199,7 @@ export async function driveRoutes(app: FastifyInstance, ctx: Ctx) {
           meta: c.meta,
           photos: list.length,
           decks: deckCounts.find((d) => d.clientId === c.id)?.n ?? 0,
-          cover: cover ? publicPhoto(cover) : null,
+          cover: cover ? publicPhoto(ctx, cover) : null,
         };
       }),
     );
@@ -212,7 +212,7 @@ export async function driveRoutes(app: FastifyInstance, ctx: Ctx) {
     const c = await ownClient(user.id, id);
     const list = await clientPhotos(db, c.id);
     const cover = coverOf(list);
-    return { id: c.id, name: c.name, meta: c.meta, removed: Boolean(c.removedAt), cover: cover ? publicPhoto(cover) : null, photos: list.map(publicPhoto) };
+    return { id: c.id, name: c.name, meta: c.meta, removed: Boolean(c.removedAt), cover: cover ? publicPhoto(ctx, cover) : null, photos: list.map((p) => publicPhoto(ctx, p)) };
   });
 
   app.patch('/clients/:id', async (req) => {
@@ -235,7 +235,7 @@ export async function driveRoutes(app: FastifyInstance, ctx: Ctx) {
     const body = parse(z.object({ choice: z.string().trim().min(1).max(200) }), req.body);
     await ownClient(user.id, id);
     const picked = pickPhotos(await clientPhotos(db, id), body.choice);
-    return { photos: picked.photos.map(publicPhoto), note: picked.note ?? null };
+    return { photos: picked.photos.map((p) => publicPhoto(ctx, p)), note: picked.note ?? null };
   });
 
   /* -------------------------------------------------------------- photos */
@@ -260,12 +260,7 @@ export async function driveRoutes(app: FastifyInstance, ctx: Ctx) {
       .set({ kind: body.kind, kindManual: body.kind !== null })
       .where(eq(photos.id, id))
       .returning();
-    return publicPhoto(p!);
+    return publicPhoto(ctx, p!);
   });
-
-  app.get('/photos/:id/image', async (req, reply) => {
-    const { user } = me(req);
-    const { id } = parse(z.object({ id: z.uuid() }), req.params);
-    return sendPhoto(ctx, reply, await ownPhoto(user.id, id), 'private, max-age=3600');
-  });
+  // GET /photos/:id/image lives in public.ts: it accepts a signed URL or the sign-in header.
 }

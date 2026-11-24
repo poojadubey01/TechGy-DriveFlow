@@ -1,6 +1,8 @@
-import { useSyncExternalStore } from 'react';
+import { api } from '@/api/client';
+import type { ApiBrand } from '@/api/types';
 
 import { useSession } from './session';
+import { createStore } from './store';
 
 /** Accent colours offered in the brand kit (all readable as white-on-colour and colour-on-white). */
 export const ACCENTS = [
@@ -14,21 +16,36 @@ export const ACCENTS = [
 
 type BrandState = { on: boolean; name: string; accent: string };
 
-/** In memory for now (resets on restart). Replace with your backend once accounts are real. */
-let state: BrandState = { on: true, name: '', accent: ACCENTS[0].hex };
-const listeners = new Set<() => void>();
-const subscribe = (l: () => void) => {
-  listeners.add(l);
-  return () => listeners.delete(l);
-};
+const DEFAULTS: BrandState = { on: true, name: '', accent: ACCENTS[0].hex };
+const store = createStore<BrandState>(DEFAULTS);
 
+/** Fills the brand kit from GET /me. */
+export function hydrateBrand(b: ApiBrand) {
+  store.set({ on: b.on, name: b.name, accent: b.accent.toUpperCase() });
+}
+
+let pending: Partial<BrandState> = {};
+let timer: ReturnType<typeof setTimeout> | null = null;
+
+/** Changes the brand kit right away; saving waits a moment so typing a name sends one request. */
 export function setBrand(patch: Partial<BrandState>) {
-  state = { ...state, ...patch, name: (patch.name ?? state.name).slice(0, 40) };
-  listeners.forEach((l) => l());
+  const clean = { ...patch, ...(patch.name !== undefined ? { name: patch.name.slice(0, 40) } : {}) };
+  store.set((s) => ({ ...s, ...clean }));
+  pending = { ...pending, ...clean };
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(() => {
+    const body = pending;
+    pending = {};
+    timer = null;
+    api<ApiBrand>('/me/brand', { method: 'PATCH', body }).catch(() => undefined);
+  }, 500);
 }
 
 export function resetBrand() {
-  setBrand({ on: true, name: '', accent: ACCENTS[0].hex });
+  if (timer) clearTimeout(timer);
+  timer = null;
+  pending = {};
+  store.reset();
 }
 
 /** Brand name used when none is set: the account's company, else the person's name. */
@@ -38,8 +55,7 @@ export function brandFallback(user: { company?: string; name: string } | null) {
 
 /** The brand applied to decks. With no name set, it uses the company on the account. */
 export function useBrand(): { on: boolean; accent: string; name: string; customName: string } {
-  const s = useSyncExternalStore(subscribe, () => state, () => state);
+  const s = store.use();
   const { user } = useSession();
   return { on: s.on, accent: s.accent, customName: s.name, name: s.name.trim() || brandFallback(user) };
 }
-

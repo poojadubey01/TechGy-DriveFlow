@@ -26,4 +26,4 @@ npm run seed
 npm run dev
 ```
 
-The API runs at http://localhost:4000. The app doesn't use it yet; connecting the screens to the API is the next step.
+The API runs at http://localhost:4000, and the app gets all its data from it. Start the API first, then the app.

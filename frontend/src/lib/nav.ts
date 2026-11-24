@@ -1,3 +1,4 @@
+import { getSession } from '@/data/session';
 import { type Href, router } from 'expo-router';
 
 let busyUntil = 0;
@@ -13,4 +14,9 @@ export function resetTo(href: Href) {
   busyUntil = now + 500;
   if (router.canDismiss()) router.dismissAll();
   router.replace(href);
+}
+
+/** After signing in: Home when Drive is set up, otherwise the Drive onboarding. */
+export function goAfterSignIn() {
+  resetTo(getSession().drive.folderId ? '/home' : '/connect-drive');
 }

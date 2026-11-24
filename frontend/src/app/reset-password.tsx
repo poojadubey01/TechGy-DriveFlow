@@ -55,7 +55,7 @@ export default function ResetPassword() {
   const resend = async () => {
     if (timer.left > 0) return;
     try {
-      await resendCode(email);
+      await resendCode(email, 'reset');
       timer.restart();
       haptic.tap();
     } catch (e) {

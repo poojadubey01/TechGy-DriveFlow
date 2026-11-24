@@ -6,9 +6,8 @@ import { Text, View } from 'react-native';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { GoogleButton, OrDivider, SubmitButton, TextField, type TextInputRef, TextLink } from '@/components/auth/Form';
 import { haptic } from '@/hooks/haptics';
-import { type User, setDrive, setUser } from '@/data/session';
 import { useMounted } from '@/hooks/useMounted';
-import { resetTo } from '@/lib/nav';
+import { goAfterSignIn } from '@/lib/nav';
 import { AuthError, isEmail, signInWithEmail, signInWithGoogle } from '@/services/auth';
 import { colors } from '@/theme/tokens';
 
@@ -24,14 +23,11 @@ export default function SignIn() {
   const clear = (key: 'email' | 'password') => setErrors((e) => (e[key] || e.form ? { ...e, [key]: undefined, form: undefined } : e));
 
   const mounted = useMounted();
-  const finish = (user: User) => {
+  const finish = () => {
     // Left the screen while signing in: don't jump anywhere.
     if (!mounted.current) return;
-    setUser(user);
-    // A returning account already has Drive connected (mock), on the account that signed in.
-    setDrive({ connected: true, account: user.email, folder: 'Projects', lastSync: 'Today' });
     haptic.success();
-    resetTo('/home');
+    goAfterSignIn();
   };
 
   const submit = async () => {
@@ -45,7 +41,8 @@ export default function SignIn() {
     }
     setLoading(true);
     try {
-      finish(await signInWithEmail(email, password));
+      await signInWithEmail(email, password);
+      finish();
     } catch (e) {
       setErrors({ form: e instanceof AuthError ? e.message : 'Something went wrong. Try again.' });
       haptic.warn();
@@ -57,7 +54,11 @@ export default function SignIn() {
   const withGoogle = async () => {
     setGoogle(true);
     try {
-      finish(await signInWithGoogle());
+      await signInWithGoogle();
+      finish();
+    } catch (e) {
+      setErrors({ form: e instanceof AuthError ? e.message : 'Google sign-in didn’t work. Try again.' });
+      haptic.warn();
     } finally {
       setGoogle(false);
     }

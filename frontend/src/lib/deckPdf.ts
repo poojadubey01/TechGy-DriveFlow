@@ -1,10 +1,9 @@
-import { Asset } from 'expo-asset';
 import { File, Paths } from 'expo-file-system';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
-import type { Client, DeckSlide } from '@/data/clients';
+import type { Asset, DeckSlide } from '@/data/clients';
 import type { TemplateId } from '@/data/templates';
 import { colors } from '@/theme/tokens';
 
@@ -13,15 +12,15 @@ function esc(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }
 
-/** Bundled image → data URI, so the PDF is self-contained (no network, no file paths). */
-async function toDataUri(module: number): Promise<string> {
-  const asset = Asset.fromModule(module);
-  await asset.downloadAsync();
-  const uri = asset.localUri ?? asset.uri;
-  // The web print frame needs a full URL (it has no base path of its own).
-  if (Platform.OS === 'web') return new URL(uri, window.location.href).href;
-  const b64 = await new File(uri).base64();
-  return `data:image/jpeg;base64,${b64}`;
+/** A slide photo → data URI, so the PDF is self-contained (the photo URLs are signed and expire). */
+async function toDataUri(photo: Asset): Promise<string> {
+  // The web print frame loads the (signed) URL itself; it needs a full URL.
+  if (Platform.OS === 'web') return new URL(photo.uri, window.location.href).href;
+  if (photo.uri.startsWith('file:')) return `data:image/jpeg;base64,${await new File(photo.uri).base64()}`;
+  const target = new File(Paths.cache, `pdf-photo-${photo.id.replace(/[^w-]/g, '')}.jpg`);
+  if (target.exists) target.delete();
+  const file = await File.downloadFileAsync(photo.uri, target);
+  return `data:image/jpeg;base64,${await file.base64()}`;
 }
 
 /** Web: print the deck's own HTML in a hidden frame (expo-print on web only prints the current page). */
@@ -78,7 +77,7 @@ type Page = { src: string; title: string };
 /** 1 x 1 transparent pixel: the <img> keeps its layout; the real photo comes from its CSS class. */
 const PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
 
-function html(client: Client, deck: string, pages: Page[], brand: PdfBrand, template: TemplateId) {
+function html(client: { name: string }, deck: string, pages: Page[], brand: PdfBrand, template: TemplateId) {
   // Each distinct photo is written once (as a CSS class) and reused by every slide that shows it,
   // so a 40-slide deck carries ~7 photos instead of 40 copies.
   const photoIndex = new Map<string, number>();
@@ -157,7 +156,7 @@ const PAGE_PT = { w: 720, h: 405 } as const;
  * user can save it to Downloads/Drive/Files or send it. On web, opens the print dialog instead.
  */
 export async function downloadDeckPdf(
-  client: Client,
+  client: { name: string },
   slides: DeckSlide[],
   { deck = 'Portfolio', onReady, brand = null, template = 'classic' }: { deck?: string; onReady?: () => void; brand?: PdfBrand; template?: TemplateId } = {},
 ): Promise<void> {

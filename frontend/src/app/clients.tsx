@@ -2,12 +2,12 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ChevronRight, Search, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
 import { FilterPills, PageShell } from '@/components/PageShell';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { useDecks } from '@/data/app';
-import { type Client, clients } from '@/data/clients';
+import { type Client, useClients, useClientsStatus } from '@/data/clients';
 import { colors, shadow } from '@/theme/tokens';
 
 const FILTERS = ['All', 'Villas', 'Towers', 'Communities'] as const;
@@ -51,6 +51,8 @@ function ClientRow({ c }: { c: Client }) {
 export default function Clients() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('All');
+  const clients = useClients();
+  const status = useClientsStatus();
   const q = query.trim().toLowerCase();
   const list = clients.filter((c) => matchesFilter(c, filter) && (!q || c.name.toLowerCase().includes(q) || c.meta.toLowerCase().includes(q)));
 
@@ -87,7 +89,16 @@ export default function Clients() {
       <Text className="mb-2 px-2 font-jk text-[13px] text-muted" accessibilityLiveRegion="polite">
         {list.length} {list.length === 1 ? 'client' : 'clients'} · synced from Google Drive
       </Text>
-      {list.length === 0 ? (
+      {list.length === 0 && status === 'loading' ? (
+        <View className="items-center py-10" accessibilityLabel="Loading clients">
+          <ActivityIndicator color={colors.brand} />
+        </View>
+      ) : list.length === 0 && clients.length === 0 ? (
+        <View className="items-center rounded-[22px] bg-card px-6 py-10" style={{ boxShadow: shadow.soft }}>
+          <Text className="font-jk-semibold text-[16px] text-ink">No clients yet</Text>
+          <Text className="mt-1 text-center font-jk text-[13px] text-muted">{status === 'error' ? 'Couldn’t load your clients. Check your connection.' : 'Connect Google Drive and choose your projects folder in Profile. Each sub-folder becomes a client.'}</Text>
+        </View>
+      ) : list.length === 0 ? (
         <View className="items-center rounded-[22px] bg-card px-6 py-10" style={{ boxShadow: shadow.soft }}>
           <Text className="font-jk-semibold text-[16px] text-ink">No clients found</Text>
           <Text className="mt-1 text-center font-jk text-[13px] text-muted">Try another name, or add a client folder in Google Drive.</Text>

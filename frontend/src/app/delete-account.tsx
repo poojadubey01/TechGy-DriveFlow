@@ -6,8 +6,7 @@ import { BackHandler, Text, View } from 'react-native';
 import { SubmitButton, TextField } from '@/components/auth/Form';
 import { PageShell, SectionLabel } from '@/components/PageShell';
 import { SettingsCard, SignInRequired } from '@/components/Settings';
-import { signOut, useSession } from '@/data/session';
-import { resetWorkspace } from '@/data/workspace';
+import { useSession } from '@/data/session';
 import { haptic } from '@/hooks/haptics';
 import { resetTo } from '@/lib/nav';
 import { AuthError, deleteAccount } from '@/services/auth';
@@ -80,9 +79,8 @@ export default function DeleteAccount() {
     }
     setLoading(true);
     try {
+      // Deletes everything on the server, then forgets the account on this phone.
       await deleteAccount(user.email, typed);
-      resetWorkspace('empty');
-      signOut();
       haptic.success();
       setDone(true);
     } catch (e) {

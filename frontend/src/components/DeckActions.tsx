@@ -4,12 +4,11 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { type Deck, deleteDeck, renameDeck } from '@/data/app';
-import { getClient } from '@/data/clients';
-import { resetDeck } from '@/data/deckEdits';
-import { setShare } from '@/data/sharing';
+import { type Deck, deckClient, deleteDeck, renameDeck } from '@/data/app';
+
 import { haptic } from '@/hooks/haptics';
-import { confirmAction } from '@/lib/confirm';
+import { errorMessage } from '@/api/client';
+import { confirmAction, showError } from '@/lib/confirm';
 import { colors, shadow } from '@/theme/tokens';
 
 import { SubmitButton, TextField } from './auth/Form';
@@ -39,7 +38,7 @@ export function DeckActions({ deck, onClose }: { deck: Deck | null; onClose: () 
   const [title, setTitle] = useState(deck?.title ?? '');
 
   if (!deck) return null;
-  const client = getClient(deck.clientId);
+  const client = deckClient(deck);
 
   const go = (pathname: '/ready' | '/activity') => {
     onClose();
@@ -48,16 +47,14 @@ export function DeckActions({ deck, onClose }: { deck: Deck | null; onClose: () 
 
   const remove = () =>
     confirmAction('Delete this deck?', `“${deck.title}” will be removed and its share link will stop working. Your Drive photos are not touched.`, 'Delete', () => {
-      deleteDeck(deck.id);
-      resetDeck(deck.id);
-      setShare(deck.id, { active: false });
+      deleteDeck(deck.id).catch((e) => showError('Could not delete the deck', errorMessage(e)));
       haptic.warn();
       onClose();
     });
 
   const save = () => {
     if (!title.trim()) return;
-    renameDeck(deck.id, title);
+    renameDeck(deck.id, title).catch((e) => showError('Could not rename the deck', errorMessage(e)));
     haptic.success();
     onClose();
   };

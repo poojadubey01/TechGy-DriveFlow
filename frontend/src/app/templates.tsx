@@ -8,15 +8,13 @@ import { DeckGone } from '@/components/DeckGone';
 import { PageShell } from '@/components/PageShell';
 import { SlideView } from '@/components/SlideView';
 import { useBrand } from '@/data/brand';
-import { buildSlides, coverTitle, getClient } from '@/data/clients';
+import { buildSlides, coverTitle, useSampleClient } from '@/data/clients';
 import { useDeckSlides } from '@/data/deckEdits';
 import { getTemplate, setDefaultTemplate, setDeckTemplate, type TemplateId, templates, useDeckTemplate, useDefaultTemplate } from '@/data/templates';
 import { haptic } from '@/hooks/haptics';
 import { useDeckRoute } from '@/hooks/useDeckRoute';
 import { colors, shadow } from '@/theme/tokens';
 
-const sample = getClient('highrize');
-const SAMPLE_SLIDES = buildSlides(sample.gallery, 3, coverTitle(sample, 'Portfolio'));
 
 /**
  * Choose a template. With ?deck=<id> it changes that deck (previews use its own slides);
@@ -33,11 +31,12 @@ export default function Templates() {
   const deckSlides = useDeckSlides(deck);
   const brand = useBrand();
   const { width } = useWindowDimensions();
+  const sample = useSampleClient();
 
   if (!forDefault && !deck) return <DeckGone title="Templates" />;
 
   const client = deckClient ?? sample;
-  const slides = forDefault ? SAMPLE_SLIDES : deckSlides;
+  const slides = forDefault ? buildSlides(sample.gallery, 3, coverTitle(sample, 'Portfolio')) : deckSlides;
   const b = brand.on ? { name: brand.name, accent: brand.accent } : null;
   const bigW = width - 32 - 24;
   const smallW = Math.floor((bigW - 8) / 2);

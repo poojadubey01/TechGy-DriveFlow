@@ -1,15 +1,16 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Check, PartyPopper } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { AuthShell } from '@/components/auth/AuthShell';
 import { StepDots, SubmitButton } from '@/components/auth/Form';
-import { setDrive } from '@/data/session';
+import { errorMessage } from '@/api/client';
 import { haptic } from '@/hooks/haptics';
 import { resetTo } from '@/lib/nav';
+import { chooseFolder, type SyncResult, syncDrive } from '@/services/drive';
 import { easing } from '@/theme/motion';
 import { colors, fonts, shadow } from '@/theme/tokens';
 
@@ -20,32 +21,69 @@ function toNumber(v: string | string[] | undefined, fallback: number) {
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
-/** Onboarding 3/3 — sync the chosen folder, then finish. */
+/** Onboarding 3/3 — sync the chosen folder on the server, then finish. */
 export default function Syncing() {
-  const params = useLocalSearchParams<{ folder?: string; clients?: string; photos?: string; from?: string }>();
-  const folder = typeof params.folder === 'string' && params.folder ? params.folder : 'Projects';
-  const clients = toNumber(params.clients, 4);
-  const photos = toNumber(params.photos, 320);
+  const params = useLocalSearchParams<{ folderId?: string; folder?: string; clients?: string; from?: string }>();
+  const folderId = typeof params.folderId === 'string' ? params.folderId : '';
+  const folder = typeof params.folder === 'string' && params.folder ? params.folder : 'Drive';
+  const expected = toNumber(params.clients, 0);
   const fromProfile = params.from === 'profile';
 
   const progress = useSharedValue(0);
   const [percent, setPercent] = useState(0);
+  const [result, setResult] = useState<SyncResult | null>(null);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  // The bar runs to 90% on its own and waits there for the server; both must finish to show "all set".
+  const waiting = useRef({ bar: false, server: false });
 
   useEffect(() => {
+    let alive = true;
+    waiting.current = { bar: false, server: false };
     const finish = () => {
-      setDrive({ folder, lastSync: 'Just now' });
+      if (!alive) return;
       haptic.success();
       setDone(true);
     };
+    const complete = () => progress.set(withTiming(1, { duration: 450, easing: easing.out }, (ok) => {
+      'worklet';
+      if (ok) scheduleOnRN(finish);
+    }));
+    const barAt90 = () => {
+      waiting.current.bar = true;
+      if (waiting.current.server) complete();
+    };
+    progress.set(0);
     progress.set(
-      withTiming(1, { duration: SYNC_MS, easing: easing.inOut }, (ok) => {
+      withTiming(0.9, { duration: SYNC_MS, easing: easing.inOut }, (ok) => {
         'worklet';
-        if (ok) scheduleOnRN(finish);
+        if (ok) scheduleOnRN(barAt90);
       }),
     );
-    return () => cancelAnimation(progress);
-  }, [folder, progress]);
+    (async () => {
+      try {
+        if (folderId) await chooseFolder(folderId);
+        const r = await syncDrive();
+        if (!alive) return;
+        setResult(r);
+        waiting.current.server = true;
+        if (waiting.current.bar) complete();
+      } catch (e) {
+        if (!alive) return;
+        cancelAnimation(progress);
+        setError(errorMessage(e, 'Could not sync your Drive. Please try again.'));
+        haptic.warn();
+      }
+    })();
+    return () => {
+      alive = false;
+      cancelAnimation(progress);
+    };
+  }, [folderId, progress, attempt]);
+
+  const clients = result?.clients ?? expected;
+  const photos = result?.photos ?? 0;
 
   useAnimatedReaction(
     () => Math.round(progress.value * 100),
@@ -58,8 +96,8 @@ export default function Syncing() {
 
   const steps = [
     { label: `Reading the “${folder}” folder`, at: 0 },
-    { label: `Found ${clients} client folders`, at: 30 },
-    { label: `Indexing ${photos.toLocaleString('en-IN')} photos`, at: 55 },
+    { label: clients ? `Found ${clients} client ${clients === 1 ? 'folder' : 'folders'}` : 'Finding client folders', at: 30 },
+    { label: result ? `Indexing ${photos.toLocaleString('en-IN')} photos` : 'Indexing photos', at: 55 },
     { label: 'Building your client list', at: 85 },
   ];
 
@@ -70,6 +108,30 @@ export default function Syncing() {
     }
     resetTo('/home');
   };
+
+  if (error) {
+    return (
+      <AuthShell
+        eyebrow={fromProfile ? undefined : <StepDots step={3} />}
+        title="Sync didn’t finish"
+        subtitle={error}
+        footer={
+          <SubmitButton
+            label="Try again"
+            loadingLabel=""
+            loading={false}
+            onPress={() => {
+              setError(null);
+              setPercent(0);
+              setAttempt((a) => a + 1);
+            }}
+          />
+        }
+      >
+        <View />
+      </AuthShell>
+    );
+  }
 
   if (done) {
     return (

@@ -1,63 +1,112 @@
-import { useSyncExternalStore } from 'react';
+import { api } from '@/api/client';
+import type { ApiDeckDetail, ApiDeckSummary, ApiNotification } from '@/api/types';
 
-import type { Asset, DeckType } from './clients';
+import { type Asset, bumpClientDecks, type Client, type DeckType, findClient, slidePhoto } from './clients';
+import { createStore, dayLabel, relativeTime } from './store';
 
 /* ------------------------------------------------------------------ decks */
+
+export type DeckTemplate = ApiDeckSummary['template'];
 
 export type Deck = {
   id: string;
   clientId: string;
+  clientName: string;
   type: DeckType;
   /** The deck's name. It is also the cover slide's title (Ready, Preview, PDF, client view). */
   title: string;
+  template: DeckTemplate;
   /** Current slide count (changes when slides are removed in Edit deck). */
   slides: number;
   /** Slide count as built, what "Reset" in Edit deck goes back to. */
   builtSlides: number;
-  /** Photos the deck was built from, in order; null = all of the client's photos. */
-  photos: readonly Asset[] | null;
+  edited: boolean;
+  cover: Asset | null;
+  /** "Today", "Yesterday", "14 Nov". */
   when: string;
+  createdAt: string;
   /** Unguessable code in the share link (driveflow.app/p/<shareId>). */
   shareId: string;
-  /** Who shared it, shown to the client on the share link. */
+  shareUrl: string;
+  share: { active: boolean; allowPdf: boolean };
+  /** How many times the client opened the share link. */
+  opens: number;
+  /** Who shared it (from the deck's detail). */
   sender?: { name: string; email: string };
 };
 
-const seed = (d: Omit<Deck, 'builtSlides' | 'photos'>): Deck => ({ ...d, builtSlides: d.slides, photos: null });
-
-/** Sample decks (swap for the API). Newest first. */
-const SEED_DECKS: readonly Deck[] = [
-  seed({ id: 'd1', clientId: 'highrize', type: 'Portfolio', title: 'Luxury villa portfolio', slides: 12, when: 'Today', shareId: 'k7q2m9xw4hpa' }),
-  seed({ id: 'd2', clientId: 'otherside', type: 'Proposal', title: 'Gated community proposal', slides: 15, when: 'Yesterday', shareId: 'r3v8n1tz6cqe' }),
-  seed({ id: 'd3', clientId: 'elysium', type: 'Moodboard', title: 'Interiors moodboard', slides: 8, when: '16 Nov', shareId: 'w5b2y7ju0dkf' }),
-  seed({ id: 'd4', clientId: 'vijetha', type: 'Portfolio', title: 'Villa township portfolio', slides: 12, when: '14 Nov', shareId: 'p9h4s6ex1lmg' }),
-  seed({ id: 'd5', clientId: 'highrize', type: 'Proposal', title: 'Phase 2 proposal', slides: 15, when: '10 Nov', shareId: 'c2f8k3qa7nvb' }),
-];
-
-/** Share links point here. Host the web build on this domain to open them in a browser (see README). */
-export const SHARE_BASE_URL = 'https://driveflow.app/p/';
-
-export function shareLink(deck: Deck) {
-  return `${SHARE_BASE_URL}${deck.shareId}`;
+export function deckFromApi(d: ApiDeckSummary | ApiDeckDetail): Deck {
+  return {
+    id: d.id,
+    clientId: d.client.id,
+    clientName: d.client.name,
+    type: d.type,
+    title: d.title,
+    template: d.template,
+    slides: d.slides,
+    builtSlides: d.builtSlides,
+    edited: d.edited,
+    cover: d.cover ? slidePhoto(d.cover.photoId, d.cover.url) : null,
+    when: dayLabel(d.createdAt),
+    createdAt: d.createdAt,
+    shareId: d.share.id,
+    shareUrl: d.share.url,
+    share: { active: d.share.active, allowPdf: d.share.allowPdf },
+    opens: d.opens,
+    sender: 'sender' in d ? { name: d.sender.name, email: d.sender.email } : undefined,
+  };
 }
 
-/**
- * Your decks, newest first. Every deck has its own id, so two proposals for the same client are
- * two separate decks. In memory for now: swap for your API.
- */
-let deckList: readonly Deck[] = SEED_DECKS;
-const deckListeners = new Set<() => void>();
-const subscribeDecks = (l: () => void) => {
-  deckListeners.add(l);
-  return () => deckListeners.delete(l);
-};
-const setDecks = (next: readonly Deck[]) => {
-  deckList = next;
-  deckListeners.forEach((l) => l());
-};
+type DecksState = { list: readonly Deck[]; status: 'idle' | 'loading' | 'ready' | 'error' };
+const decks = createStore<DecksState>({ list: [], status: 'idle' });
+
+export function shareLink(deck: Pick<Deck, 'shareUrl'>) {
+  return deck.shareUrl;
+}
+
+export async function loadDecks(): Promise<void> {
+  decks.set((s) => ({ ...s, status: s.status === 'ready' ? 'ready' : 'loading' }));
+  try {
+    const res = await api<{ decks: ApiDeckSummary[] }>('/decks');
+    decks.set({ list: res.decks.map(deckFromApi), status: 'ready' });
+  } catch (e) {
+    decks.set((s) => ({ ...s, status: s.status === 'ready' ? 'ready' : 'error' }));
+    throw e;
+  }
+}
+
+/** Puts a deck from the API into the list (keeps the sender if the summary has none). */
+export function upsertDeck(fromServer: ApiDeckSummary | ApiDeckDetail, atTop = false) {
+  const next = deckFromApi(fromServer);
+  decks.set((s) => {
+    const i = s.list.findIndex((d) => d.id === next.id);
+    if (i < 0) return { ...s, list: atTop ? [next, ...s.list] : [...s.list, next] };
+    const merged = { ...next, sender: next.sender ?? s.list[i]!.sender };
+    return { ...s, list: s.list.map((d, j) => (j === i ? merged : d)) };
+  });
+  return next;
+}
+
+/** Changes a deck in the list right away (the API call follows). */
+export function patchDeck(id: string, patch: Partial<Deck>) {
+  decks.set((s) => ({ ...s, list: s.list.map((d) => (d.id === id ? { ...d, ...patch } : d)) }));
+}
+
+export function getDeck(id: string) {
+  return decks.get().list.find((d) => d.id === id);
+}
+
+/** The deck's client, or a stand-in built from the deck (clients still loading, or folder removed from Drive). */
+export function deckClient(deck: Deck, client?: Client): Client {
+  return client ?? findClient(deck.clientId) ?? { id: deck.clientId, name: deck.clientName, meta: '', photos: 0, cover: deck.cover, gallery: [], decks: 0 };
+}
 
 export function useDecks(): readonly Deck[] {
-  return useSyncExternalStore(subscribeDecks, () => deckList, () => deckList);
+  return decks.use().list;
+}
+
+export function useDecksStatus() {
+  return decks.use().status;
 }
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -68,61 +117,51 @@ export function useDeckById(id: string | string[] | undefined): Deck | undefined
   return useDecks().find((d) => d.id === key);
 }
 
-export function useDeckByShareId(shareId: string | string[] | undefined): Deck | undefined {
-  const key = first(shareId);
-  return useDecks().find((d) => d.shareId === key);
+export type NewDeck = { clientId: string; type: DeckType; slides: number; title?: string; photoIds?: string[]; template?: DeckTemplate };
+
+/** Builds a deck on the server (slides, titles, share link) and adds it at the top. */
+export async function createDeck(input: NewDeck): Promise<ApiDeckDetail> {
+  const detail = await api<ApiDeckDetail>('/decks', { method: 'POST', body: input });
+  upsertDeck(detail, true);
+  bumpClientDecks(detail.client.id, 1);
+  return detail;
 }
 
-/** 12 characters from an unambiguous alphabet. A backend should issue these server-side. */
-function newShareId() {
-  const abc = 'abcdefghjkmnpqrstuvwxyz23456789';
-  return Array.from({ length: 12 }, () => abc[Math.floor(Math.random() * abc.length)]).join('');
-}
-
-/** Adds a freshly built deck at the top. A repeated name gets a number ("… portfolio 2"). */
-export function createDeck(input: { clientId: string; type: DeckType; slides: number; title: string; photos: readonly Asset[] | null; sender?: Deck['sender'] }): Deck {
-  const taken = new Set(deckList.filter((d) => d.clientId === input.clientId).map((d) => d.title));
-  let title = input.title;
-  for (let n = 2; taken.has(title); n++) title = `${input.title} ${n}`;
-  const deck: Deck = {
-    id: `n${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`,
-    clientId: input.clientId,
-    type: input.type,
-    title,
-    slides: input.slides,
-    builtSlides: input.slides,
-    photos: input.photos,
-    when: 'Just now',
-    shareId: newShareId(),
-    sender: input.sender,
-  };
-  setDecks([deck, ...deckList]);
-  return deck;
-}
-
-export function renameDeck(id: string, title: string) {
+export async function renameDeck(id: string, title: string): Promise<ApiDeckDetail | undefined> {
   const clean = title.trim().slice(0, 60);
-  if (!clean) return;
-  setDecks(deckList.map((d) => (d.id === id ? { ...d, title: clean } : d)));
+  const before = getDeck(id);
+  if (!clean || !before) return undefined;
+  patchDeck(id, { title: clean });
+  try {
+    const detail = await api<ApiDeckDetail>(`/decks/${id}`, { method: 'PATCH', body: { title: clean } });
+    upsertDeck(detail);
+    return detail;
+  } catch (e) {
+    patchDeck(id, { title: before.title });
+    throw e;
+  }
 }
 
-/** Keeps the library's slide count in step with Edit deck. */
-export function setDeckSlides(id: string, slides: number) {
-  setDecks(deckList.map((d) => (d.id === id ? { ...d, slides } : d)));
+export async function deleteDeck(id: string): Promise<void> {
+  const before = decks.get().list;
+  const deck = getDeck(id);
+  decks.set((s) => ({ ...s, list: s.list.filter((d) => d.id !== id) }));
+  try {
+    await api(`/decks/${id}`, { method: 'DELETE' });
+    if (deck) bumpClientDecks(deck.clientId, -1);
+  } catch (e) {
+    decks.set((s) => ({ ...s, list: before }));
+    throw e;
+  }
 }
 
-export function deleteDeck(id: string) {
-  setDecks(deckList.filter((d) => d.id !== id));
-}
-
-/** Sign-out brings back the sample workspace; deleting the account empties it. */
-export function resetDecks(to: 'seed' | 'empty') {
-  setDecks(to === 'seed' ? SEED_DECKS : []);
+export function resetDecks() {
+  decks.reset();
 }
 
 /* ---------------------------------------------------------- notifications */
 
-export type NotificationKind = 'ready' | 'viewed' | 'photos' | 'team';
+export type NotificationKind = ApiNotification['kind'];
 
 export type AppNotification = {
   id: string;
@@ -131,91 +170,57 @@ export type AppNotification = {
   body: string;
   when: string;
   group: 'Today' | 'Earlier';
+  read: boolean;
   /** Where tapping it goes. */
-  target: { pathname: '/ready' | '/clients' | '/profile' | '/client/[id]' | '/activity'; params?: Record<string, string> };
+  target: ApiNotification['target'];
 };
 
-export const notifications: readonly AppNotification[] = [
-  {
-    id: 'n1',
-    kind: 'ready',
-    title: 'Your deck is ready',
-    body: 'Highrize Villas · Luxury villa portfolio, 12 slides',
-    when: '2 min ago',
-    group: 'Today',
-    target: { pathname: '/ready', params: { deck: 'd1' } },
-  },
-  {
-    id: 'n2',
-    kind: 'viewed',
-    title: 'Other Side Villas opened your proposal',
-    body: 'Viewed 3 times · last seen 1 hour ago',
-    when: '1 h ago',
-    group: 'Today',
-    target: { pathname: '/activity', params: { deck: 'd2' } },
-  },
-  {
-    id: 'n3',
-    kind: 'photos',
-    title: '12 new photos in Google Drive',
-    body: 'Added to Projects / Reliance Elysium',
-    when: '4 h ago',
-    group: 'Today',
-    target: { pathname: '/client/[id]', params: { id: 'elysium' } },
-  },
-  {
-    id: 'n4',
-    kind: 'team',
-    title: 'Rohan joined your workspace',
-    body: 'He can now tag clients and create decks',
-    when: 'Yesterday',
-    group: 'Earlier',
-    target: { pathname: '/profile' },
-  },
-  {
-    id: 'n5',
-    kind: 'ready',
-    title: 'Your deck is ready',
-    body: 'Vijetha Vaibhogam · Villa township portfolio, 12 slides',
-    when: '14 Nov',
-    group: 'Earlier',
-    target: { pathname: '/ready', params: { deck: 'd4' } },
-  },
-] as const;
+type NotesState = { items: readonly AppNotification[]; unread: number; status: 'idle' | 'loading' | 'ready' | 'error' };
+const notes = createStore<NotesState>({ items: [], unread: 0, status: 'idle' });
 
-/** Read state shared by the Home bell and the Notifications page (in memory for now). */
-const INITIAL_READ = ['n4', 'n5'];
-let read = new Set<string>(INITIAL_READ);
-const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((l) => l());
-const subscribe = (l: () => void) => {
-  listeners.add(l);
-  return () => listeners.delete(l);
-};
-
-export function markRead(id: string) {
-  if (read.has(id)) return;
-  read = new Set(read).add(id);
-  emit();
+function noteFromApi(n: ApiNotification): AppNotification {
+  const t = new Date(n.createdAt);
+  const now = new Date();
+  const today = t.toDateString() === now.toDateString();
+  return { id: n.id, kind: n.kind, title: n.title, body: n.body, when: relativeTime(n.createdAt), group: today ? 'Today' : 'Earlier', read: n.read, target: n.target };
 }
 
-/** Fresh workspace (sign-out / delete account). */
-export function resetReadState() {
-  read = new Set(INITIAL_READ);
-  emit();
+export async function loadNotifications(): Promise<void> {
+  notes.set((s) => ({ ...s, status: s.status === 'ready' ? 'ready' : 'loading' }));
+  try {
+    const res = await api<{ items: ApiNotification[]; unread: number }>('/notifications');
+    notes.set({ items: res.items.map(noteFromApi), unread: res.unread, status: 'ready' });
+  } catch (e) {
+    notes.set((s) => ({ ...s, status: s.status === 'ready' ? 'ready' : 'error' }));
+    throw e;
+  }
+}
+
+/** The unread badge from GET /me, before the list itself is loaded. */
+export function setUnreadCount(n: number) {
+  notes.set((s) => ({ ...s, unread: n }));
+}
+
+export function markRead(id: string) {
+  const n = notes.get().items.find((x) => x.id === id);
+  if (!n || n.read) return;
+  notes.set((s) => ({ ...s, unread: Math.max(0, s.unread - 1), items: s.items.map((x) => (x.id === id ? { ...x, read: true } : x)) }));
+  api(`/notifications/${id}/read`, { method: 'POST' }).catch(() => undefined);
 }
 
 export function markAllRead() {
-  read = new Set(notifications.map((n) => n.id));
-  emit();
+  notes.set((s) => ({ ...s, unread: 0, items: s.items.map((x) => ({ ...x, read: true })) }));
+  api('/notifications/read-all', { method: 'POST' }).catch(() => undefined);
 }
 
-/** The current set of read ids (a new Set each change, so React re-renders). */
-export function useReadIds(): ReadonlySet<string> {
-  return useSyncExternalStore(subscribe, () => read, () => read);
+export function resetNotifications() {
+  notes.reset();
+}
+
+export function useNotifications() {
+  return notes.use();
 }
 
 export function useUnreadCount(): number {
-  const ids = useReadIds();
-  return notifications.filter((n) => !ids.has(n.id)).length;
+  return notes.use().unread;
 }

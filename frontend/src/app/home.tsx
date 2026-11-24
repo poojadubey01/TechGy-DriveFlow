@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowUp, Bell, ChevronRight, FileText, HardDrive, LayoutDashboard, LayoutGrid, Presentation } from 'lucide-react-native';
 import { ScrollView as RNScrollView, Text, View } from 'react-native';
@@ -18,8 +19,8 @@ import { GlowBackground } from '@/components/glow/GlowBackground';
 import type { GlowBlob } from '@/components/glow/types';
 import { IconButton, RoundAction } from '@/components/ui/Button';
 import { PressableScale } from '@/components/ui/PressableScale';
-import { useDecks, useUnreadCount } from '@/data/app';
-import { clients, type DeckType } from '@/data/clients';
+import { loadDecks, loadNotifications, useDecks, useUnreadCount } from '@/data/app';
+import { type DeckType, useClients } from '@/data/clients';
 import { firstName, initials, useSession } from '@/data/session';
 import { enter } from '@/theme/motion';
 import { colors, fonts, glow, shadow } from '@/theme/tokens';
@@ -45,7 +46,16 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const unread = useUnreadCount();
   const recent = useDecks().slice(0, 5);
+  const clients = useClients();
   const { user, drive } = useSession();
+
+  // Coming back to Home picks up new decks, client views and notifications.
+  useFocusEffect(
+    useCallback(() => {
+      loadDecks().catch(() => undefined);
+      loadNotifications().catch(() => undefined);
+    }, []),
+  );
   const driveReady = drive.connected && !!drive.folder;
   const scrollY = useSharedValue(0);
 
@@ -135,7 +145,7 @@ export default function Home() {
 
         <Animated.View entering={enter.fade()}>
           <View className="gap-2">
-            {clients.map((c, i) => (
+            {clients.slice(0, 6).map((c, i) => (
               <ClientCard key={c.id} client={c} index={i} onPress={() => startChat({ client: c.id })} />
             ))}
           </View>
