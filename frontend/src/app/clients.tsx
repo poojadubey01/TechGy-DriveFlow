@@ -5,9 +5,10 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
 import { FilterPills, PageShell } from '@/components/PageShell';
+import { LoadFailed } from '@/components/LoadFailed';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { useDecks } from '@/data/app';
-import { type Client, useClients, useClientsStatus } from '@/data/clients';
+import { type Client, loadClients, useClients, useClientsStatus } from '@/data/clients';
 import { colors, shadow } from '@/theme/tokens';
 
 const FILTERS = ['All', 'Villas', 'Towers', 'Communities'] as const;
@@ -86,17 +87,21 @@ export default function Clients() {
         </View>
       }
     >
-      <Text className="mb-2 px-2 font-jk text-[13px] text-muted" accessibilityLiveRegion="polite">
-        {list.length} {list.length === 1 ? 'client' : 'clients'} · synced from Google Drive
-      </Text>
+      {(status === 'ready' || clients.length > 0) && (
+        <Text className="mb-2 px-2 font-jk text-[13px] text-muted" accessibilityLiveRegion="polite">
+          {list.length} {list.length === 1 ? 'client' : 'clients'} · synced from Google Drive
+        </Text>
+      )}
       {list.length === 0 && status === 'loading' ? (
         <View className="items-center py-10" accessibilityLabel="Loading clients">
           <ActivityIndicator color={colors.brand} />
         </View>
+      ) : clients.length === 0 && status === 'error' ? (
+        <LoadFailed what="clients" onRetry={loadClients} />
       ) : list.length === 0 && clients.length === 0 ? (
         <View className="items-center rounded-[22px] bg-card px-6 py-10" style={{ boxShadow: shadow.soft }}>
           <Text className="font-jk-semibold text-[16px] text-ink">No clients yet</Text>
-          <Text className="mt-1 text-center font-jk text-[13px] text-muted">{status === 'error' ? 'Couldn’t load your clients. Check your connection.' : 'Connect Google Drive and choose your projects folder in Profile. Each sub-folder becomes a client.'}</Text>
+          <Text className="mt-1 text-center font-jk text-[13px] text-muted">Connect Google Drive and choose your projects folder in Profile. Each sub-folder becomes a client.</Text>
         </View>
       ) : list.length === 0 ? (
         <View className="items-center rounded-[22px] bg-card px-6 py-10" style={{ boxShadow: shadow.soft }}>

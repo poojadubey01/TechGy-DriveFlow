@@ -1,5 +1,7 @@
 import { Alert, Platform } from 'react-native';
 
+import { errorMessage } from '@/api/client';
+
 /** Asks before a destructive action: a native alert on phones, the browser's confirm on web. */
 export function confirmAction(title: string, message: string, confirmLabel: string, onConfirm: () => void) {
   if (Platform.OS === 'web') {
@@ -19,4 +21,9 @@ export function showError(title: string, message: string) {
     return;
   }
   Alert.alert(title, message);
+}
+
+/** A change shown right away couldn't be saved, and has been put back: tells the person why. */
+export function showSaveFailed(e: unknown) {
+  showError('Couldn’t save your change', errorMessage(e, 'Check your connection and try again.'));
 }

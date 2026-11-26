@@ -3,6 +3,7 @@ import { CheckCheck, Eye, Images, type LucideIcon, Presentation, Users } from 'l
 import { useEffect } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
+import { LoadFailed } from '@/components/LoadFailed';
 import { PageShell, SectionLabel } from '@/components/PageShell';
 import { IconButton } from '@/components/ui/Button';
 import { PressableScale } from '@/components/ui/PressableScale';
@@ -51,18 +52,24 @@ export default function Notifications() {
       title="Notifications"
       right={<IconButton icon={CheckCheck} label="Mark all as read" tint={unread ? colors.brand : colors.muted} onPress={markAllRead} />}
     >
-      <Text className="px-2 font-jk text-[14px] text-muted" accessibilityLiveRegion="polite">
-        {unread > 0 ? `${unread} unread` : 'You are all caught up'}
-      </Text>
+      {(unread > 0 || status !== 'error' || notifications.length > 0) && (
+        <Text className="px-2 font-jk text-[14px] text-muted" accessibilityLiveRegion="polite">
+          {unread > 0 ? `${unread} unread` : 'You are all caught up'}
+        </Text>
+      )}
       {notifications.length === 0 && status === 'loading' ? (
         <View className="items-center py-10" accessibilityLabel="Loading notifications">
           <ActivityIndicator color={colors.brand} />
+        </View>
+      ) : notifications.length === 0 && status === 'error' ? (
+        <View className="mt-4">
+          <LoadFailed what="notifications" onRetry={loadNotifications} />
         </View>
       ) : notifications.length === 0 ? (
         <View className="mt-4 items-center rounded-[22px] bg-card px-6 py-10" style={{ boxShadow: shadow.soft }}>
           <Text className="font-jk-semibold text-[16px] text-ink">No notifications yet</Text>
           <Text className="mt-1 text-center font-jk text-[13px] text-muted">
-            {status === 'error' ? 'Couldn’t load notifications. Check your connection.' : 'You’ll hear here when a deck is ready or a client opens one.'}
+            You’ll hear here when a deck is ready or a client opens one.
           </Text>
         </View>
       ) : null}
