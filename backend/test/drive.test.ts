@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { call, makeApp, newUser, type TestApp, withDrive } from './helpers.js';
 
@@ -54,6 +54,35 @@ describe('connecting Google Drive', () => {
       expect(google.body.error.code).toBe('google_not_configured');
     } finally {
       await prod.close();
+    }
+  });
+
+  it('connects real Drive with the app’s server auth code (no redirect URI)', async () => {
+    const real = await makeApp({ GOOGLE_OAUTH_CLIENT_ID: 'web.apps.googleusercontent.com', GOOGLE_OAUTH_CLIENT_SECRET: 'secret' });
+    const sent: URLSearchParams[] = [];
+    vi.stubGlobal('fetch', async (url: string, init?: { body?: URLSearchParams }) => {
+      if (url === 'https://oauth2.googleapis.com/token') {
+        sent.push(new URLSearchParams(init?.body));
+        return Response.json({ access_token: 'at', expires_in: 3600, refresh_token: 'rt', scope: 'openid https://www.googleapis.com/auth/drive.readonly' });
+      }
+      if (url.startsWith('https://www.googleapis.com/drive/v3/about')) return Response.json({ user: { emailAddress: 'Agent@Gmail.com' } });
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    try {
+      const { token } = await newUser(real);
+      const res = await call(real.app, 'POST', '/drive/connect', { token, body: { code: '4/server-auth-code' } });
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ connected: true, account: 'agent@gmail.com', provider: 'google', folder: null });
+      expect(Object.fromEntries(sent[0]!)).toEqual({
+        client_id: 'web.apps.googleusercontent.com',
+        client_secret: 'secret',
+        grant_type: 'authorization_code',
+        code: '4/server-auth-code',
+        redirect_uri: '',
+      });
+    } finally {
+      vi.unstubAllGlobals();
+      await real.close();
     }
   });
 

@@ -84,7 +84,7 @@ export async function driveRoutes(app: FastifyInstance, ctx: Ctx) {
     const body = parse(
       z.union([
         z.object({ mock: z.literal(true) }),
-        z.object({ code: z.string().min(4).max(2048), redirectUri: z.string().url().max(2048), codeVerifier: z.string().min(16).max(256).optional() }),
+        z.object({ code: z.string().min(4).max(2048), redirectUri: z.string().url().max(2048).optional(), codeVerifier: z.string().min(16).max(256).optional() }),
       ]),
       req.body,
     );

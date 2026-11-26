@@ -92,6 +92,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Part
     if (config.EMAIL_PROVIDER === 'console') problems.push('EMAIL_PROVIDER=console would only log codes; use resend in production');
     if (config.EMAIL_PROVIDER === 'resend' && !config.RESEND_API_KEY) problems.push('RESEND_API_KEY is required for EMAIL_PROVIDER=resend');
     if (config.CORS_ORIGINS.length === 0) problems.push('CORS_ORIGINS must list the allowed web origins in production');
+    if (config.GOOGLE_CLIENT_IDS.length === 0) problems.push('GOOGLE_CLIENT_IDS is required in production (Google sign-in)');
+    if (!config.GOOGLE_OAUTH_CLIENT_ID || !config.GOOGLE_OAUTH_CLIENT_SECRET) problems.push('GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET are required in production (Google Drive)');
     if (problems.length) throw new Error(`Unsafe production configuration:\n  ${problems.join('\n  ')}`);
   }
   if (!config.TOKEN_ENCRYPTION_KEY) config.TOKEN_ENCRYPTION_KEY = DEV_KEY;

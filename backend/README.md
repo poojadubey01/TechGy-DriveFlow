@@ -61,12 +61,15 @@ The real Google and Resend code is written but **hasn't been tested against live
 1. In [Google Cloud Console](https://console.cloud.google.com), create a project and enable the **Google Drive API**.
 2. Set up the **OAuth consent screen** with the scopes `openid`, `email`, `profile` and `https://www.googleapis.com/auth/drive.readonly`.
 3. Create OAuth clients:
-   - **Android** and **iOS** clients for the app's sign-in.
-   - A **Web application** client. Its client ID and secret go in `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`.
-4. Put every client ID in `GOOGLE_CLIENT_IDS`.
-5. In the app, use `expo-auth-session` to request the scopes above with offline access. Then:
-   - Send the **ID token** to `POST /auth/google`.
-   - Send the **authorization code** to `POST /drive/connect`.
+   - A **Web application** client. Its client ID and secret go in `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`, and its client ID in `GOOGLE_CLIENT_IDS`.
+   - An **Android** client: package `com.techgylink.driveflow` and the SHA-1 of each signing key (for local builds, the debug key: `cd frontend/android && ./gradlew signingReport`).
+   - An **iOS** client: bundle ID `com.techgylink.driveflow`.
+4. While the consent screen is in "Testing", add your Google accounts as **test users**. `drive.readonly` is a restricted scope, so other people can only connect after Google verifies the app.
+5. In the app, set the client IDs ([frontend/README.md → Turning on real Google](../frontend/README.md#turning-on-real-google)). The app uses native Google sign-in, which issues tokens for the Web client:
+   - It sends the **ID token** to `POST /auth/google`.
+   - It sends a **server auth code** (with no redirect URI) to `POST /drive/connect`.
+
+Real Google tokens and codes are accepted even while `DEV_MOCKS` is on, so you can test them next to the demo account.
 
 ---
 
@@ -132,7 +135,7 @@ Photo URLs in responses are paths like `/photos/<id>/image`. The app adds the AP
 | `POST /notifications/:id/read`, `POST /notifications/read-all` | Mark notifications as read |
 | **Google Drive** | |
 | `GET /drive` | `{ connected, account, folder, lastSync }` |
-| `POST /drive/connect` | `{ code, redirectUri, codeVerifier? }` or `{ mock: true }` |
+| `POST /drive/connect` | `{ code, redirectUri?, codeVerifier? }` (the app's server auth code has no redirect URI) or `{ mock: true }` |
 | `GET /drive/folders` | Top-level folders with how many client folders each has |
 | `POST /drive/folder` | `{ folderId }` picks the projects folder |
 | `POST /drive/sync` | Reads clients and photos → `{ result: { clients, photos, newPhotos } }` |
