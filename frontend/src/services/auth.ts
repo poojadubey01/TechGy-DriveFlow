@@ -1,9 +1,9 @@
 /**
  * Accounts, backed by the DriveFlow API (backend/src/routes/auth.ts). Screens only use this file.
  *
- * Google sign-in: until Google OAuth keys are set up, "Continue with Google" uses the API's
- * development stand-in and signs in as DEV_GOOGLE_EMAIL (the demo workspace from `npm run seed`).
- * For real Google sign-in, get an ID token with expo-auth-session and send it to POST /auth/google.
+ * Google sign-in: on iOS and Android with EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID set, Google's account picker
+ * gives an ID token for POST /auth/google (services/google.ts). Otherwise (and on web) "Continue with
+ * Google" uses the API's development stand-in and signs in as DEV_GOOGLE_EMAIL (the `npm run seed` demo).
  */
 import { api, ApiError, setToken, setUnauthorizedHandler } from '@/api/client';
 import { DEV_GOOGLE_EMAIL, DEV_GOOGLE_NAME } from '@/api/config';
@@ -11,6 +11,7 @@ import { clearToken, loadToken, saveToken } from '@/api/tokenStore';
 import type { ApiMe, ApiSignedIn } from '@/api/types';
 import { clearSession, getSession, setSessionReady, type User } from '@/data/session';
 import { loadWorkspace, resetWorkspace } from '@/data/workspace';
+import { googleIdToken, googleReady } from '@/services/google';
 import { unregisterPush } from '@/services/push';
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -37,6 +38,8 @@ export function isStrongEnough(pw: string) {
 
 /** Every API error carries a message that can be shown as is. */
 export { ApiError as AuthError } from '@/api/client';
+/** True when the person closed Google's sheet: stop quietly. */
+export { isCancelled } from '@/services/google';
 
 /** Keeps the token, loads the account's workspace and returns the user. */
 async function signedIn(res: ApiSignedIn): Promise<User> {
@@ -59,7 +62,7 @@ export async function signUpWithEmail(input: { name: string; email: string; comp
 }
 
 export async function signInWithGoogle(): Promise<User> {
-  const idToken = `dev:${DEV_GOOGLE_EMAIL}:${DEV_GOOGLE_NAME}`;
+  const idToken = googleReady ? await googleIdToken() : `dev:${DEV_GOOGLE_EMAIL}:${DEV_GOOGLE_NAME}`;
   return signedIn(await api<ApiSignedIn>('/auth/google', { method: 'POST', body: { idToken } }));
 }
 

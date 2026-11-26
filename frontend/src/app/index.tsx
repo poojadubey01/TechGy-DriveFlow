@@ -16,7 +16,7 @@ import { PillButton } from '@/components/ui/Button';
 import { errorMessage } from '@/api/client';
 import { showError } from '@/lib/confirm';
 import { goAfterSignIn } from '@/lib/nav';
-import { signInWithGoogle } from '@/services/auth';
+import { isCancelled, signInWithGoogle } from '@/services/auth';
 import { colors, fonts, glow } from '@/theme/tokens';
 
 const BLOBS: readonly GlowBlob[] = [
@@ -43,7 +43,7 @@ export default function Welcome() {
       await signInWithGoogle();
       goAfterSignIn();
     } catch (e) {
-      showError('Google sign-in didn’t work', errorMessage(e));
+      if (!isCancelled(e)) showError('Google sign-in didn’t work', errorMessage(e));
     } finally {
       setConnecting(false);
     }

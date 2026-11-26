@@ -8,7 +8,7 @@ import { Checkbox, GoogleButton, GoogleTermsNotice, OrDivider, StrengthBar, Subm
 import { haptic } from '@/hooks/haptics';
 import { useMounted } from '@/hooks/useMounted';
 import { goAfterSignIn } from '@/lib/nav';
-import { AuthError, isEmail, isStrongEnough, passwordStrength, signInWithGoogle, signUpWithEmail } from '@/services/auth';
+import { AuthError, isCancelled, isEmail, isStrongEnough, passwordStrength, signInWithGoogle, signUpWithEmail } from '@/services/auth';
 import { colors } from '@/theme/tokens';
 
 type Errors = { name?: string; email?: string; password?: string; terms?: string; form?: string };
@@ -67,6 +67,7 @@ export default function SignUp() {
       await signInWithGoogle();
       signedIn();
     } catch (e) {
+      if (isCancelled(e)) return;
       setErrors({ form: e instanceof AuthError ? e.message : 'Google sign-in didn’t work. Try again.' });
       haptic.warn();
     } finally {

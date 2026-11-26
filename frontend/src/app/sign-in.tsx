@@ -8,7 +8,7 @@ import { GoogleButton, GoogleTermsNotice, OrDivider, SubmitButton, TextField, ty
 import { haptic } from '@/hooks/haptics';
 import { useMounted } from '@/hooks/useMounted';
 import { goAfterSignIn } from '@/lib/nav';
-import { AuthError, isEmail, signInWithEmail, signInWithGoogle } from '@/services/auth';
+import { AuthError, isCancelled, isEmail, signInWithEmail, signInWithGoogle } from '@/services/auth';
 import { colors } from '@/theme/tokens';
 
 /** Sign in — email + password, or Google. Returning users go straight to Home. */
@@ -57,6 +57,7 @@ export default function SignIn() {
       await signInWithGoogle();
       finish();
     } catch (e) {
+      if (isCancelled(e)) return;
       setErrors({ form: e instanceof AuthError ? e.message : 'Google sign-in didn’t work. Try again.' });
       haptic.warn();
     } finally {
