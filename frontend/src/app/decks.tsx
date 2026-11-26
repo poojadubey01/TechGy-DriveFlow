@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
 import { LayoutGrid, Plus } from 'lucide-react-native';
 import { useState } from 'react';
-import { Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Text, useWindowDimensions, View } from 'react-native';
 
 import { DeckActions } from '@/components/DeckActions';
 import { DeckCard } from '@/components/DeckCard';
+import { LoadFailed } from '@/components/LoadFailed';
 import { FilterPills, PageShell } from '@/components/PageShell';
 import { IconButton, PillButton } from '@/components/ui/Button';
-import { type Deck, useDecks } from '@/data/app';
+import { type Deck, loadDecks, useDecks, useDecksStatus } from '@/data/app';
 import { colors, shadow } from '@/theme/tokens';
 
 const FILTERS = ['All', 'Portfolio', 'Proposal', 'Moodboard'] as const;
@@ -18,6 +19,7 @@ export default function Decks() {
   const [filter, setFilter] = useState<Filter>('All');
   const [menuFor, setMenuFor] = useState<Deck | null>(null);
   const all = useDecks();
+  const status = useDecksStatus();
   const list = all.filter((d) => filter === 'All' || d.type === filter);
   const { width } = useWindowDimensions();
   const cardW = Math.floor((width - 32 - 10) / 2);
@@ -29,11 +31,19 @@ export default function Decks() {
         right={<IconButton icon={Plus} label="New deck" tint={colors.brand} onPress={() => router.push('/chat')} />}
         header={<FilterPills options={FILTERS} value={filter} onChange={setFilter} />}
       >
-        <Text className="mb-2.5 px-2 font-jk text-[13px] text-muted" accessibilityLiveRegion="polite">
-          {list.length} {list.length === 1 ? 'deck' : 'decks'}
-          {filter === 'All' ? '' : ` · ${filter.toLowerCase()}s`}
-        </Text>
-        {list.length === 0 ? (
+        {(status === 'ready' || all.length > 0) && (
+          <Text className="mb-2.5 px-2 font-jk text-[13px] text-muted" accessibilityLiveRegion="polite">
+            {list.length} {list.length === 1 ? 'deck' : 'decks'}
+            {filter === 'All' ? '' : ` · ${filter.toLowerCase()}s`}
+          </Text>
+        )}
+        {all.length === 0 && (status === 'loading' || status === 'idle') ? (
+          <View className="items-center py-10" accessibilityLabel="Loading decks">
+            <ActivityIndicator color={colors.brand} />
+          </View>
+        ) : all.length === 0 && status === 'error' ? (
+          <LoadFailed what="decks" onRetry={loadDecks} />
+        ) : list.length === 0 ? (
           <View className="items-center rounded-[22px] bg-card px-6 py-9" style={{ boxShadow: shadow.soft }}>
             <View style={{ width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.sky }}>
               <LayoutGrid size={26} color={colors.brand} strokeWidth={1.8} />

@@ -10,7 +10,7 @@ import { errorMessage } from '@/api/client';
 import { haptic } from '@/hooks/haptics';
 import { useMounted } from '@/hooks/useMounted';
 import { resetTo } from '@/lib/nav';
-import { connectDrive } from '@/services/drive';
+import { connectDrive, isCancelled } from '@/services/drive';
 import { colors, shadow } from '@/theme/tokens';
 
 const logo = require('../../assets/images/logo-blue.png');
@@ -39,6 +39,7 @@ export default function ConnectDrive() {
       haptic.success();
       router.push({ pathname: '/choose-folder', params: fromProfile ? { from: 'profile' } : {} });
     } catch (e) {
+      if (isCancelled(e)) return;
       setError(errorMessage(e, 'Could not connect to Google Drive. Check your connection and try again.'));
       haptic.warn();
     } finally {

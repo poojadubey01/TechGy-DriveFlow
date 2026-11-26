@@ -35,7 +35,18 @@ npx expo run:android
 
 **Where the app finds the API:** in development it uses the same computer that serves the app, on port 4000, so a phone, the emulator and the browser all reach the API on your PC without any setup. For a real build, set `EXPO_PUBLIC_API_URL` (for example `https://api.driveflow.app`).
 
-**Trying it:** "Continue with Google" signs in as the demo account from `npm run seed` (demo@driveflow.local). That account already has Drive connected, 4 clients and 5 decks. You can also create a new account: the 6-digit email code shows in the API's log and at http://localhost:4000/dev/outbox. Connecting Drive then uses the API's sample Drive.
+**Trying it:** without Google client IDs set, "Continue with Google" signs in as the demo account from `npm run seed` (demo@driveflow.local). That account already has Drive connected, 4 clients and 5 decks. You can also create a new account: the 6-digit email code shows in the API's log and at http://localhost:4000/dev/outbox. Connecting Drive then uses the API's sample Drive.
+
+### Turning on real Google
+
+1. Set up Google Cloud and the API's keys first: [backend/README.md → Setting up Google](../backend/README.md#setting-up-google-when-youre-ready).
+2. Put the client IDs in `frontend/.env.local`:
+   ```
+   EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=xxxx.apps.googleusercontent.com
+   EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=yyyy.apps.googleusercontent.com
+   ```
+   The Web client ID is used on both platforms (Google issues the ID token and the Drive code for it). The iOS client ID is only needed for iOS builds; `app.config.ts` turns it into the URL scheme Google returns through.
+3. Rebuild the app: `npx expo run:android` (or `run:ios`). Native Google sign-in doesn't work in Expo Go.
 
 ## Screens
 
@@ -191,10 +202,10 @@ npm run doctor
   - clients and photos;
   - decks, which the server builds, plus renames, Edit deck, templates and share links;
   - client activity, notifications, settings, the brand kit and Help feedback.
-- **Real Google sign-in and Google Drive** still use the API's development stand-ins:
+- **Google sign-in and Google Drive** use native Google sign-in (`@react-native-google-signin/google-signin`, in `src/services/google.ts`) on iOS and Android once `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` is set (see "Turning on real Google" below). It needs a development build (`npx expo run:android` / `run:ios`), not Expo Go.
+- **Without that client ID, and on web,** they use the API's development stand-ins:
   - "Continue with Google" sends a development token (`DEV_GOOGLE_EMAIL` in `src/api/config.ts`).
   - Connecting Drive sends `{ mock: true }`.
-  - To go live, use `expo-auth-session` with your Google OAuth client IDs. Send the ID token to `POST /auth/google`, and the authorization code (with the `drive.readonly` scope and offline access) to `POST /drive/connect`. Then turn `DEV_MOCKS` off on the server. The screens don't change: only `src/services/auth.ts` and `src/services/drive.ts` do.
 - **The chat's first message** goes to the API's assistant (`POST /assistant/understand`).
   - It works out the client, deck type, slide count, photos and template, and skips the questions already answered: "a 10-slide proposal for Highrize, night shots, bold template" goes straight to the photo check.
   - With `ANTHROPIC_API_KEY` on the server it uses Claude; without one, a built-in reader. The follow-up questions are still scripted on the phone.

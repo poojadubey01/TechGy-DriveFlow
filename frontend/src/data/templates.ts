@@ -1,5 +1,6 @@
 import { api } from '@/api/client';
 import type { ApiDeckDetail } from '@/api/types';
+import { showSaveFailed } from '@/lib/confirm';
 
 import { getDeck, patchDeck, upsertDeck, useDecks } from './app';
 import { setSettings, useSettings } from './settings';
@@ -34,8 +35,9 @@ export function setDeckTemplate(deckId: string, id: TemplateId) {
   patchDeck(deckId, { template: id });
   api<ApiDeckDetail>(`/decks/${deckId}`, { method: 'PATCH', body: { template: id } })
     .then((d) => upsertDeck(d))
-    .catch(() => {
+    .catch((e) => {
       if (before) patchDeck(deckId, { template: before });
+      showSaveFailed(e);
     });
 }
 

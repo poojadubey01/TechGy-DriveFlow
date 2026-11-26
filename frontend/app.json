@@ -2,6 +2,7 @@
   "expo": {
     "name": "DriveFlow",
     "slug": "driveflow",
+    "owner": "techgylink",
     "scheme": "driveflow",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,6 +17,14 @@
     },
     "android": {
       "package": "com.techgylink.driveflow",
+      "googleServicesFile": "./google-services.json",
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E9ECFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -68,7 +77,17 @@
       ],
       "expo-sharing",
       "expo-asset",
-      "expo-secure-store"
-    ]
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e9f116ee-d84a-415f-b948-4d7b721e1c70"
+      }
+    }
   }
 }

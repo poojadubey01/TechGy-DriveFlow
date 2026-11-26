@@ -1,5 +1,6 @@
 import { api } from '@/api/client';
 import type { ApiShare } from '@/api/types';
+import { showSaveFailed } from '@/lib/confirm';
 
 import { getDeck, patchDeck, useDecks } from './app';
 
@@ -16,7 +17,10 @@ export function setShare(deckId: string, patch: Partial<ShareState>) {
   patchDeck(deckId, { share: { ...before, ...patch } });
   api<ApiShare>(`/decks/${deckId}/share`, { method: 'PATCH', body: patch })
     .then((s) => patchDeck(deckId, { share: { active: s.active, allowPdf: s.allowPdf } }))
-    .catch(() => patchDeck(deckId, { share: before }));
+    .catch((e) => {
+      patchDeck(deckId, { share: before });
+      showSaveFailed(e);
+    });
 }
 
 /** A brand-new link for the deck; the old one stops working. */

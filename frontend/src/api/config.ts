@@ -29,8 +29,15 @@ export function apiUrl(path: string) {
 }
 
 /**
- * Development only: the email "Continue with Google" signs in as until real Google sign-in is set up.
- * The backend's demo seed uses demo@driveflow.local (a workspace with Drive, clients and decks).
+ * Google OAuth client IDs (Google Cloud Console → Credentials). The Web client ID turns on real
+ * Google sign-in and Drive on iOS and Android; the iOS client ID is also needed for iOS builds.
+ */
+export const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
+export const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
+
+/**
+ * Development only: the email "Continue with Google" signs in as while no Google client ID is set
+ * (and on web). The backend's demo seed uses demo@driveflow.local (a workspace with Drive, clients and decks).
  */
 export const DEV_GOOGLE_EMAIL = process.env.EXPO_PUBLIC_DEV_GOOGLE_EMAIL || 'demo@driveflow.local';
 export const DEV_GOOGLE_NAME = process.env.EXPO_PUBLIC_DEV_GOOGLE_NAME || 'Aisha Khan';

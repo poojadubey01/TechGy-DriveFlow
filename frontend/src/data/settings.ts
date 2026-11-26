@@ -1,5 +1,6 @@
 import { api } from '@/api/client';
 import type { ApiSettings } from '@/api/types';
+import { showSaveFailed } from '@/lib/confirm';
 
 import { createStore } from './store';
 
@@ -31,7 +32,10 @@ export function setSettings(patch: Partial<Settings>) {
   store.set({ ...before, ...patch });
   api<ApiSettings>('/me/settings', { method: 'PATCH', body: patch })
     .then((saved) => store.set({ ...saved }))
-    .catch(() => store.set(before));
+    .catch((e) => {
+      store.set(before);
+      showSaveFailed(e);
+    });
 }
 
 export function resetSettings() {

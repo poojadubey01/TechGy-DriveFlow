@@ -1,15 +1,20 @@
 /**
  * Google Drive, backed by the DriveFlow API (backend/src/routes/drive.ts). Screens only use this file.
  *
- * Until Google OAuth keys are set up, connecting uses the API's sample Drive ({ mock: true }): a
- * "Projects" folder with the four sample clients. For real Drive, get an authorization code with
- * the drive.readonly scope (expo-auth-session, offline access) and send it to POST /drive/connect.
+ * Connecting: on iOS and Android with EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID set, Google asks for read-only
+ * Drive access and gives a one-time code the API swaps for lasting access (services/google.ts).
+ * Otherwise (and on web) it uses the API's sample Drive ({ mock: true }): a "Projects" folder with the
+ * four sample clients.
  */
 import { api } from '@/api/client';
 import type { ApiDrive, ApiDriveFolder } from '@/api/types';
 import { loadClients } from '@/data/clients';
 import { driveFromApi, getSession, setDriveState } from '@/data/session';
 import { relativeTime } from '@/data/store';
+import { googleDriveCode, googleReady } from '@/services/google';
+
+/** True when the person closed Google's sheet: stop quietly. */
+export { isCancelled } from '@/services/google';
 
 export type DriveFolder = {
   id: string;
@@ -21,7 +26,8 @@ export type DriveFolder = {
 
 /** Connects the signed-in user's Google Drive. */
 export async function connectDrive(): Promise<{ account: string }> {
-  const d = await api<ApiDrive>('/drive/connect', { method: 'POST', body: { mock: true } });
+  const body = googleReady ? { code: await googleDriveCode() } : { mock: true };
+  const d = await api<ApiDrive>('/drive/connect', { method: 'POST', body });
   setDriveState(driveFromApi(d));
   return { account: d.account ?? '' };
 }

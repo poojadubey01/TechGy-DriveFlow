@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "507440113916",
+    "project_id": "driveflow-f16c4",
+    "storage_bucket": "driveflow-f16c4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:507440113916:android:196efff57d8c7727348f79",
+        "android_client_info": {
+          "package_name": "com.techgylink.driveflow"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA86PpuHwi6ZaIl5aWTFuV3tFTxIwaxVo0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

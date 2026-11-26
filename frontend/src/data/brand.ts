@@ -1,5 +1,6 @@
 import { api } from '@/api/client';
 import type { ApiBrand } from '@/api/types';
+import { showSaveFailed } from '@/lib/confirm';
 
 import { useSession } from './session';
 import { createStore } from './store';
@@ -18,10 +19,15 @@ type BrandState = { on: boolean; name: string; accent: string };
 
 const DEFAULTS: BrandState = { on: true, name: '', accent: ACCENTS[0].hex };
 const store = createStore<BrandState>(DEFAULTS);
+/** What the server has, so a failed save can be put back. */
+let saved: BrandState = DEFAULTS;
+
+const fromApi = (b: ApiBrand): BrandState => ({ on: b.on, name: b.name, accent: b.accent.toUpperCase() });
 
 /** Fills the brand kit from GET /me. */
 export function hydrateBrand(b: ApiBrand) {
-  store.set({ on: b.on, name: b.name, accent: b.accent.toUpperCase() });
+  saved = fromApi(b);
+  store.set(saved);
 }
 
 let pending: Partial<BrandState> = {};
@@ -37,7 +43,18 @@ export function setBrand(patch: Partial<BrandState>) {
     const body = pending;
     pending = {};
     timer = null;
-    api<ApiBrand>('/me/brand', { method: 'PATCH', body }).catch(() => undefined);
+    api<ApiBrand>('/me/brand', { method: 'PATCH', body })
+      .then((b) => {
+        saved = fromApi(b);
+      })
+      .catch((e) => {
+        // Put back what's saved and drop edits made since: they would fail the same way.
+        if (timer) clearTimeout(timer);
+        timer = null;
+        pending = {};
+        store.set(saved);
+        showSaveFailed(e);
+      });
   }, 500);
 }
 
@@ -45,6 +62,7 @@ export function resetBrand() {
   if (timer) clearTimeout(timer);
   timer = null;
   pending = {};
+  saved = DEFAULTS;
   store.reset();
 }
 
