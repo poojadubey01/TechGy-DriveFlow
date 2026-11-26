@@ -114,8 +114,25 @@ describe('configuration', () => {
         EMAIL_PROVIDER: 'resend',
         RESEND_API_KEY: 're_test',
         CORS_ORIGINS: 'https://driveflow.app',
+        GOOGLE_CLIENT_IDS: 'web.apps.googleusercontent.com',
+        GOOGLE_OAUTH_CLIENT_ID: 'web.apps.googleusercontent.com',
+        GOOGLE_OAUTH_CLIENT_SECRET: 'secret',
       }),
     ).not.toThrow();
+  });
+
+  it('requires the Google keys in production', () => {
+    const safe = {
+      NODE_ENV: 'production',
+      DEV_MOCKS: 'false',
+      TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
+      DATABASE_URL: 'postgres://u:p@localhost:5432/driveflow',
+      EMAIL_PROVIDER: 'resend',
+      RESEND_API_KEY: 're_test',
+      CORS_ORIGINS: 'https://driveflow.app',
+    } as const;
+    expect(() => loadConfig(safe)).toThrow(/GOOGLE_CLIENT_IDS is required/);
+    expect(() => loadConfig({ ...safe, GOOGLE_CLIENT_IDS: 'web.apps.googleusercontent.com' })).toThrow(/GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET/);
   });
 
   it('rejects an encryption key of the wrong length', () => {

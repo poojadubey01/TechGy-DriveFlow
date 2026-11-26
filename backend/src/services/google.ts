@@ -85,12 +85,15 @@ export class GoogleOAuth {
     };
   }
 
-  /** Authorization code (from expo-auth-session with access_type=offline) → tokens. */
-  exchangeCode(input: { code: string; redirectUri: string; codeVerifier?: string }) {
+  /**
+   * Authorization code → tokens. The app's native Google sign-in gives a "server auth code" issued for
+   * the Web client, which has no redirect URI (Google expects an empty one); browser flows send theirs.
+   */
+  exchangeCode(input: { code: string; redirectUri?: string; codeVerifier?: string }) {
     return this.token({
       grant_type: 'authorization_code',
       code: input.code,
-      redirect_uri: input.redirectUri,
+      redirect_uri: input.redirectUri ?? '',
       ...(input.codeVerifier ? { code_verifier: input.codeVerifier } : {}),
     });
   }
