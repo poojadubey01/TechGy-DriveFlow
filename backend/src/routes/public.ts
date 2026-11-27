@@ -10,7 +10,8 @@ import { deviceFromUserAgent } from '../lib/device.js';
 import { AppError, badRequest, forbidden, notFound, unauthorized } from '../lib/errors.js';
 import { brandFallback } from '../services/account.js';
 import { notify } from '../services/notify.js';
-import { sendPhoto } from './drive.js';
+import { photoSize } from '../services/photoSizes.js';
+import { photoQuery, sendPhoto } from './drive.js';
 import { withCoverTitle } from './decks.js';
 
 /** No sign-in: the client's view of a share link, its photos and visit tracking. Plus meta, health and feedback. */
@@ -67,7 +68,8 @@ export async function publicRoutes(app: FastifyInstance, ctx: Ctx) {
       .from(photos)
       .where(and(eq(photos.id, photoId), eq(photos.userId, deck.userId)));
     if (!photo) throw notFound('That photo');
-    return sendPhoto(ctx, reply, photo, 'private, max-age=600');
+    const { w } = parse(photoQuery, req.query);
+    return sendPhoto(ctx, reply, photo, 'private, max-age=600', photoSize(w));
   });
 
   /**
@@ -76,7 +78,7 @@ export async function publicRoutes(app: FastifyInstance, ctx: Ctx) {
    */
   app.get('/photos/:id/image', limited, async (req, reply) => {
     const { id } = parse(z.object({ id: z.uuid() }), req.params);
-    const q = parse(z.object({ exp: z.coerce.number().int().optional(), sig: z.string().max(100).optional() }), req.query);
+    const q = parse(photoQuery.extend({ exp: z.coerce.number().int().optional(), sig: z.string().max(100).optional() }), req.query);
     const signed = q.exp !== undefined && q.sig !== undefined && q.exp > Date.now() / 1000 && ctx.secrets.macEquals(`photo:${id}:${q.exp}`, q.sig);
     const [photo] = await db.select().from(photos).where(eq(photos.id, id));
     if (!signed) {
@@ -85,7 +87,7 @@ export async function publicRoutes(app: FastifyInstance, ctx: Ctx) {
       if (!photo || photo.userId !== auth.user.id) throw notFound('That photo');
     }
     if (!photo) throw notFound('That photo');
-    return sendPhoto(ctx, reply, photo, 'private, max-age=86400');
+    return sendPhoto(ctx, reply, photo, 'private, max-age=86400', photoSize(q.w));
   });
 
   /** The client opened the link: starts a visit and tells the owner. Returns a token for progress reports. */

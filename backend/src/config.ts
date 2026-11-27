@@ -34,6 +34,8 @@ function schema(env: NodeJS.ProcessEnv) {
     DATABASE_URL: z.string().optional(),
     /** Where the embedded database keeps its files, or "memory" for a throwaway one. */
     PGLITE_DIR: z.string().default(path.join(BACKEND_ROOT, '.data', 'pglite')),
+    /** Where resized copies of Drive photos are kept (made on first view, reused afterwards). */
+    PHOTO_CACHE_DIR: z.string().default(path.join(BACKEND_ROOT, '.data', 'photos')),
     /** Public address of this API (used in links inside emails and logs). */
     API_PUBLIC_URL: z.string().url().default('http://localhost:4000'),
     /** Share links are this + the deck's share code. */

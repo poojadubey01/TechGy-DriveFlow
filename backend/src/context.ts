@@ -12,6 +12,7 @@ import type { UserRow } from './services/account.js';
 import type { DriveService } from './services/drive/index.js';
 import type { EmailSender } from './services/email.js';
 import type { GoogleAuth } from './services/google.js';
+import type { PhotoSizes } from './services/photoSizes.js';
 import type { Assistant } from './services/assistant.js';
 import type { PushSender } from './services/push.js';
 
@@ -24,6 +25,8 @@ export type Ctx = {
   email: EmailSender;
   googleAuth: GoogleAuth;
   drive: DriveService;
+  /** Resized copies of Drive photos, the only form photos are served in. */
+  photoSizes: PhotoSizes;
   /** Push notifications to phones (null when turned off). */
   push: PushSender | null;
   /** Reads typed chat requests (Claude, or the rule-based reader without a key). */

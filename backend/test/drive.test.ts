@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { call, makeApp, newUser, type TestApp, withDrive } from './helpers.js';
@@ -162,6 +163,30 @@ describe('clients and photos', () => {
     expect((await call(t.app, 'GET', photo.url.replace(/sig=./, 'sig=x'))).status).toBe(401);
     const past = Math.floor(Date.now() / 1000) - 60;
     expect((await call(t.app, 'GET', photo.url.replace(/exp=\d+/, `exp=${past}`))).status).toBe(401);
+  });
+
+  it('serves photos resized, made once and reused', async () => {
+    const [photo] = (await call(t.app, 'GET', `/clients/${highrize}`, { token })).body.photos;
+    const download = vi.spyOn(t.mockDrive, 'download');
+    // The sample photos are 1400 px wide: the default size (1600) never enlarges them.
+    const full = await call(t.app, 'GET', photo.url);
+    expect(full.status).toBe(200);
+    expect(full.headers['content-type']).toBe('image/jpeg');
+    expect((await sharp(full.raw).metadata()).width).toBe(1400);
+    // ?w= picks the next size up; the thumbnail is a fraction of the bytes.
+    const thumb = await call(t.app, 'GET', `${photo.url}&w=300`);
+    expect(thumb.status).toBe(200);
+    const meta = await sharp(thumb.raw).metadata();
+    expect(meta.width).toBe(320);
+    expect(meta.format).toBe('jpeg');
+    expect(thumb.raw.length).toBeLessThan(full.raw.length / 4);
+    // Asking again is served from disk: Drive isn't asked for the original again.
+    const before = download.mock.calls.length;
+    expect((await call(t.app, 'GET', `${photo.url}&w=300`)).raw.equals(thumb.raw)).toBe(true);
+    expect((await call(t.app, 'GET', photo.url)).raw.equals(full.raw)).toBe(true);
+    expect(download.mock.calls.length).toBe(before);
+    expect((await call(t.app, 'GET', `${photo.url}&w=abc`)).status).toBe(400);
+    download.mockRestore();
   });
 
   it('keeps a kind fixed by hand across syncs', async () => {
