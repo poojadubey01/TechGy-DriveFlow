@@ -72,7 +72,7 @@ function deviceGuess(width: number): 'phone' | 'tablet' | undefined {
 }
 
 /**
- * The client's view of a shared deck (what opens from https://driveflow.app/p/<shareId>), loaded
+ * The client's view of a shared deck (what opens from https://driveflow.techgylink.com/p/<shareId>), loaded
  * from the public API: no sign-in needed. Each visit is recorded (device, seconds per slide, PDF
  * download) for the sender's activity page; the sender's own previews aren't counted.
  */
@@ -164,6 +164,8 @@ export default function SharedDeck() {
   const from = brand.on ? brand.name : sender.name;
   const pageW = Math.min(width - 32, 720);
   const pageH = Math.round(pageW * (9 / 16));
+  // On wide screens (the web link on a laptop) the header and buttons line up with the slide column.
+  const sideInset = Math.max(16, (width - pageW) / 2);
 
   const download = async () => {
     if (busy) return;
@@ -194,7 +196,7 @@ export default function SharedDeck() {
   );
 
   const header = (
-    <View style={{ paddingHorizontal: 4, paddingBottom: 22 }}>
+    <View style={{ width: pageW, alignSelf: 'center', paddingHorizontal: 4, paddingBottom: 22 }}>
       {brand.on ? <BrandTag name={brand.name} accent={brand.accent} /> : <Text className="font-jk-semibold text-[13px] text-muted">Shared via DriveFlow</Text>}
       <Text className="mt-5 font-jk-semibold text-[12px] uppercase tracking-[1.2px] text-muted">Prepared for {client.name}</Text>
       <Text accessibilityRole="header" style={{ fontFamily: fonts.semibold, fontSize: 30, lineHeight: 36, letterSpacing: -0.8, color: colors.ink, marginTop: 4 }}>
@@ -240,18 +242,19 @@ export default function SharedDeck() {
         />
       </FadeEdges>
       {hasBar ? (
-        <View className="absolute left-4 right-4 flex-row gap-3" style={{ bottom: insets.bottom + 14 }}>
+        <View className="absolute flex-row gap-3" style={{ left: sideInset, right: sideInset, bottom: insets.bottom + 14 }}>
           {deck.allowPdf ? (
             <PillButton
-              label={busy ? 'Preparing…' : 'Download PDF'}
+              label={busy ? 'Preparing…' : 'Save PDF'}
               variant={showContact ? 'secondary' : 'primary'}
               onPress={download}
               disabled={busy}
               flex={1}
+              compact
               leading={<Download size={19} color={showContact ? colors.ink : colors.white} strokeWidth={2.2} />}
             />
           ) : null}
-          {showContact ? <PillButton label="Contact" onPress={contact} flex={1} leading={<Mail size={19} color={colors.white} strokeWidth={2.2} />} /> : null}
+          {showContact ? <PillButton label="Contact" onPress={contact} flex={1} compact leading={<Mail size={19} color={colors.white} strokeWidth={2.2} />} /> : null}
         </View>
       ) : null}
       <Toast message={toast} onHide={() => setToast(null)} />
