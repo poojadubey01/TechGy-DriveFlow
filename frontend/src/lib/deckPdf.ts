@@ -163,7 +163,19 @@ export type PdfResult = { savedTo: 'downloads'; name: string; open: () => Promis
  * - iOS and older Android: opens the share sheet, where "Save to Files" is the download.
  * - Web: opens the print dialog.
  */
-export async function downloadDeckPdf(
+/** The PDF being made, if any (see downloadDeckPdf). */
+let pdfQueue: Promise<unknown> = Promise.resolve();
+
+export function downloadDeckPdf(...args: Parameters<typeof makeDeckPdf>): Promise<PdfResult> {
+  // Android's print engine fails ("error while writing the PDF data") when two PDFs are made at
+  // once, e.g. a second tap while the first is still running: run them one after another.
+  const job = pdfQueue.then(() => makeDeckPdf(...args));
+  pdfQueue = job.catch(() => undefined);
+  return job;
+}
+
+
+async function makeDeckPdf(
   client: { name: string },
   slides: DeckSlide[],
   { deck = 'Portfolio', onReady, brand = null, template = 'classic' }: { deck?: string; onReady?: () => void; brand?: PdfBrand; template?: TemplateId } = {},

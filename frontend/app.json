@@ -84,6 +84,7 @@
       "expo-sharing",
       "expo-asset",
       "./plugins/withDebugKeystore",
+      "./plugins/withEasGradleLimits",
       [
         "expo-secure-store",
         {
