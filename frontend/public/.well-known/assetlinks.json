@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.techgylink.driveflow",
+      "sha256_cert_fingerprints": [
+        "1D:DA:96:6B:26:FC:F3:09:FB:63:EA:61:28:31:63:98:21:7B:91:01:49:F2:3C:8A:D7:A7:E3:4C:88:0B:E5:85",
+        "56:18:8C:1D:52:75:95:FD:E9:91:0E:8C:5F:6C:A2:33:4D:E8:CF:11:F9:06:29:BA:6F:35:CE:94:01:A1:3D:1E"
+      ]
+    }
+  }
+]

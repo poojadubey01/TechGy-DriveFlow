@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DriveFlow</title>
+  <meta name="description" content="DriveFlow turns the photos in your Google Drive into client-ready decks.">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --canvas: #F3F4F8; --ink: #12152A; --ink-soft: #3A3F55; --muted: #62677C; --brand: #2F45FF; }
+    * { box-sizing: border-box; margin: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(60vmax 40vmax at 25% -5%, rgba(47, 69, 255, 0.22), transparent 70%),
+        radial-gradient(40vmax 30vmax at 95% 5%, rgba(160, 170, 255, 0.25), transparent 70%),
+        var(--canvas);
+      display: flex; align-items: center; justify-content: center;
+      padding: 32px 16px;
+    }
+    main { max-width: 420px; text-align: center; }
+    img { width: 72px; height: auto; }
+    h1 { margin-top: 20px; font-size: 32px; line-height: 38px; font-weight: 600; letter-spacing: -0.8px; }
+    p { text-wrap: balance; margin-top: 10px; font-size: 16px; line-height: 24px; color: var(--ink-soft); }
+    .note { margin-top: 24px; font-size: 13px; line-height: 19px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="/logo.png" alt="">
+    <h1>DriveFlow</h1>
+    <p>Turn the photos in your Google Drive into client-ready decks, then share them with a link.</p>
+    <p class="note">DriveFlow is in private testing. Got a deck link? Open it to view the deck.</p>
+  </main>
+</body>
+</html>
