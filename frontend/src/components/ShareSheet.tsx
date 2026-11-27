@@ -18,13 +18,14 @@ import { colors, shadow } from '@/theme/tokens';
 
 import { PillButton, RoundAction } from './ui/Button';
 import { PressableScale } from './ui/PressableScale';
+import { type ToastMessage } from './ui/Toast';
 import { Toggle } from './ui/Toggle';
 
 type Props = {
   deck: Deck;
   open: boolean;
   onClose: () => void;
-  onToast: (message: string) => void;
+  onToast: (toast: ToastMessage) => void;
 };
 
 /**
@@ -102,7 +103,7 @@ export function ShareSheet({ deck, open, onClose, onToast }: Props) {
     try {
       await Share.share({ message, title: deck.title });
     } catch {
-      onToast('Sharing is not available here');
+      onToast({ message: 'Sharing is not available here', tone: 'error' });
     }
   };
   const email = async () => {
@@ -110,19 +111,19 @@ export function ShareSheet({ deck, open, onClose, onToast }: Props) {
     try {
       await Linking.openURL(url);
     } catch {
-      onToast('No mail app found');
+      onToast({ message: 'No mail app found', tone: 'error' });
     }
   };
   const stopSharing = () =>
     confirmAction('Stop sharing this deck?', 'The link stops working straight away. Anyone who opens it will see it is no longer active.', 'Stop sharing', () => {
       setShare(key, { active: false });
       haptic.warn();
-      onToast('Link turned off');
+      onToast({ message: 'Link turned off' });
     });
   const resume = () => {
     setShare(key, { active: true });
     haptic.success();
-    onToast('Sharing is on again');
+    onToast({ message: 'Sharing is on again' });
   };
   const previewAsClient = () => {
     onClose();
@@ -133,9 +134,9 @@ export function ShareSheet({ deck, open, onClose, onToast }: Props) {
     try {
       await Clipboard.setStringAsync(link);
       haptic.success();
-      onToast('Link copied');
+      onToast({ message: 'Link copied' });
     } catch {
-      onToast('Could not copy the link');
+      onToast({ message: 'Could not copy the link', tone: 'error' });
     }
   };
 

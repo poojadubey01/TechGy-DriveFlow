@@ -15,7 +15,7 @@ import { SlideView } from '@/components/SlideView';
 import { TiltCard } from '@/components/TiltCard';
 import { PillButton } from '@/components/ui/Button';
 import { PressableScale } from '@/components/ui/PressableScale';
-import { Toast } from '@/components/ui/Toast';
+import { Toast, type ToastMessage } from '@/components/ui/Toast';
 import { TopBar } from '@/components/ui/TopBar';
 
 import { useBrand } from '@/data/brand';
@@ -23,7 +23,7 @@ import { thumb } from '@/data/clients';
 import { useDeckSlides } from '@/data/deckEdits';
 import { getTemplate, useDeckTemplate } from '@/data/templates';
 import { useDeckRoute } from '@/hooks/useDeckRoute';
-import { downloadDeckPdf } from '@/lib/deckPdf';
+import { downloadDeckPdf, downloadWithToast } from '@/lib/deckPdf';
 import { colors, fonts, glow, shadow } from '@/theme/tokens';
 import { FadeEdges } from '@/components/FadeEdges';
 
@@ -41,7 +41,7 @@ export default function Ready() {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const [shareOpen, setShareOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
 
   if (!deck || !client) return <DeckGone />;
 
@@ -53,14 +53,8 @@ export default function Ready() {
   const opens = deck.opens;
   const go = (pathname: '/preview' | '/activity' | '/templates' | '/edit-deck') => router.push({ pathname, params: { deck: deck.id } });
 
-  const download = async (ready: () => void) => {
-    try {
-      await downloadDeckPdf(client, slideList, { deck: deck.title, onReady: ready, brand: b, template });
-    } catch (e) {
-      if (__DEV__) console.warn('[DriveFlow] PDF download failed:', e);
-      setToast(e instanceof Error && e.message.startsWith('Allow') ? e.message : 'Could not create the PDF');
-    }
-  };
+  const download = (ready: () => void) =>
+    downloadWithToast(() => downloadDeckPdf(client, slideList, { deck: deck.title, onReady: ready, brand: b, template }), setToast);
   const thumbs = slideList.slice(1, 4);
   const extra = slides - 1 - thumbs.length;
 
@@ -170,7 +164,7 @@ export default function Ready() {
         <PillButton label="Share with client" flex={1.4} onPress={() => setShareOpen(true)} />
       </View>
       <ShareSheet deck={deck} open={shareOpen} onClose={() => setShareOpen(false)} onToast={setToast} />
-      <Toast message={toast} tone="error" onHide={() => setToast(null)} />
+      <Toast {...toast} onHide={() => setToast(null)} />
     </View>
   );
 }

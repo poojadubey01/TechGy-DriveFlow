@@ -15,9 +15,9 @@ import type { GlowBlob } from '@/components/glow/types';
 import { SlideView } from '@/components/SlideView';
 import { IconButton, PillButton } from '@/components/ui/Button';
 import { PressableScale } from '@/components/ui/PressableScale';
-import { Toast } from '@/components/ui/Toast';
+import { Toast, type ToastMessage } from '@/components/ui/Toast';
 import type { DeckSlide } from '@/data/clients';
-import { downloadDeckPdf } from '@/lib/deckPdf';
+import { downloadDeckPdf, downloadWithToast } from '@/lib/deckPdf';
 import { colors, fonts, glow, shadow } from '@/theme/tokens';
 
 const BLOBS: readonly GlowBlob[] = [
@@ -82,7 +82,7 @@ export default function SharedDeck() {
   const { width } = useWindowDimensions();
   const [load, setLoad] = useState<Load>({ state: 'loading' });
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   const preview = useCanGoBack();
 
   // Visit tracking: which slide is on screen, seconds per slide not yet reported, and the visit's token.
@@ -170,22 +170,20 @@ export default function SharedDeck() {
   const download = async () => {
     if (busy) return;
     setBusy(true);
-    try {
-      await downloadDeckPdf(client, slides, { deck: deck.title, brand: b, template: deck.template });
+    await downloadWithToast(async () => {
+      const result = await downloadDeckPdf(client, slides, { deck: deck.title, brand: b, template: deck.template });
       const v = visit.current;
       if (v) api(`/public/visits/${v.id}/download`, { method: 'POST', body: { token: v.token } }).catch(() => undefined);
-    } catch {
-      setToast('Could not create the PDF');
-    } finally {
-      setBusy(false);
-    }
+      return result;
+    }, setToast);
+    setBusy(false);
   };
   const contact = async () => {
     if (!sender.email) return;
     try {
       await Linking.openURL(`mailto:${sender.email}?subject=${encodeURIComponent(`${client.name} — ${deck.title}`)}`);
     } catch {
-      setToast('No mail app found');
+      setToast({ message: 'No mail app found', tone: 'error' });
     }
   };
 
@@ -257,7 +255,7 @@ export default function SharedDeck() {
           {showContact ? <PillButton label="Contact" onPress={contact} flex={1} compact leading={<Mail size={19} color={colors.white} strokeWidth={2.2} />} /> : null}
         </View>
       ) : null}
-      <Toast message={toast} tone="error" onHide={() => setToast(null)} />
+      <Toast {...toast} onHide={() => setToast(null)} />
     </View>
   );
 }
