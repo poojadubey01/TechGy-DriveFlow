@@ -33,7 +33,7 @@ npx expo run:android
 
 (For a shareable install, use EAS Build: `npx eas-cli@latest build --profile development`.)
 
-**Where the app finds the API:** in development it uses the same computer that serves the app, on port 4000, so a phone, the emulator and the browser all reach the API on your PC without any setup. For a real build, set `EXPO_PUBLIC_API_URL` (for example `https://api.driveflow.app`).
+**Where the app finds the API:** in development it uses the same computer that serves the app, on port 4000, so a phone, the emulator and the browser all reach the API on your PC without any setup. For a real build, set `EXPO_PUBLIC_API_URL` (for example `https://api.driveflow.techgylink.com`).
 
 **Trying it:** without Google client IDs set, "Continue with Google" signs in as the demo account from `npm run seed` (demo@driveflow.local). That account already has Drive connected, 4 clients and 5 decks. You can also create a new account: the 6-digit email code shows in the API's log and at http://localhost:4000/dev/outbox. Connecting Drive then uses the API's sample Drive.
 
@@ -82,7 +82,7 @@ Motion is kept deliberate: one signature moment per screen, plus motion that ans
 | `/delete-account` | Delete account | what gets deleted / what stays (Drive files), type your email to confirm → "Account deleted" → start |
 | `/brand-kit` | Brand kit | live cover preview, brand on/off, brand name (defaults to your company), 6 accent colours; applies to Ready, Preview, the PDF, the build steps and the client view |
 | `/help` | Help & support | common questions (expand/collapse), "Report a problem" form with optional device details, Terms / Privacy |
-| `/p/[slug]` | Client view | what the client sees from the share link (`driveflow.app/p/<share code>`): brand, "Prepared for …", slides, Download PDF (if allowed), Contact the sender; "no longer active" after Stop sharing; "Link not found" for bad links |
+| `/p/[slug]` | Client view | what the client sees from the share link (`driveflow.techgylink.com/p/<share code>`): brand, "Prepared for …", slides, Save PDF (if allowed), Contact the sender; "no longer active" after Stop sharing; "Link not found" for bad links |
 | crash | Something went wrong (`ErrorBoundary` in `_layout.tsx`) | friendly screen with Try again / Go to start instead of a blank or red screen |
 | `/legal` | Terms & Privacy | one page with a Terms / Privacy switch (`?doc=terms\|privacy`); plain-language **drafts** — have them reviewed and fill the [placeholders] before launch |
 | any bad link | Page not found (`+not-found.tsx`) | friendly 404 with Go to home (or start, if signed out) and Go back |
@@ -214,8 +214,8 @@ npm run doctor
   - There, registering quietly does nothing and the in-app notifications still work.
 - **Drive sync:** the server re-syncs every 30 minutes, and Profile has **Sync now**.
 - **Photo labels** (exterior / interior / night) come from each photo's file name or its Drive description on the server. They can be fixed by hand with `PATCH /photos/:id`. If a folder has too few of a kind, the assistant tops up with the client's other photos and says so.
-- **Share links** point to `https://driveflow.app/p/<share code>`. The API issues the codes, and `/p/[slug]` loads the deck from the public API without sign-in and records each visit.
-  - `app.json` declares iOS associated domains and an Android app link for `driveflow.app/p/*`. They start working once that domain serves the `apple-app-site-association` and `assetlinks.json` files.
+- **Share links** point to `https://driveflow.techgylink.com/p/<share code>`. The API issues the codes, and `/p/[slug]` loads the deck from the public API without sign-in and records each visit.
+  - `app.json` declares iOS associated domains and an Android app link for `driveflow.techgylink.com/p/*`. They start working once that domain serves the `apple-app-site-association` and `assetlinks.json` files.
   - For clients without the app, host the web build (`npx expo export -p web`) on that domain, with `EXPO_PUBLIC_API_URL` pointing at the API.
 - **Terms & Privacy** text in `src/app/legal.tsx` is a plain-language draft, not legal advice: have it reviewed and replace the [placeholders] (support email, company details, governing law).
 - **Font:** the redesign mock-ups used Lufga (commercial). The app ships **Plus Jakarta Sans** (free, open licence, the original DriveFlow font). To use Lufga, add your licensed font files and change `fonts` in `tokens.ts` and `tailwind.config.js`.

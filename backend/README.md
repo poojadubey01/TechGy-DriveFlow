@@ -89,7 +89,7 @@ Real Google tokens and codes are accepted even while `DEV_MOCKS` is on, so you c
   - Slides cycle through the chosen photos (or all of them). The cover carries the deck's name, and the other slides get a title that matches the photo.
   - A repeated deck name gets a number ("… portfolio 2").
   - Edit deck saves the whole slide list. Reset goes back to the slides as built.
-- **Share links:** `https://driveflow.app/p/<12-character code>`.
+- **Share links:** `https://driveflow.techgylink.com/p/<12-character code>`.
   - The client's page (`/public/...`) needs no sign-in and can only load that deck's photos.
   - Each visit records the device, seconds per slide (capped, so it can't be inflated) and PDF downloads.
   - The owner gets a "Client opened your deck" notification. Repeat visits within 30 minutes update the same notification.

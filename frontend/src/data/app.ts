@@ -25,7 +25,7 @@ export type Deck = {
   /** "Today", "Yesterday", "14 Nov". */
   when: string;
   createdAt: string;
-  /** Unguessable code in the share link (driveflow.app/p/<shareId>). */
+  /** Unguessable code in the share link (driveflow.techgylink.com/p/<shareId>). */
   shareId: string;
   shareUrl: string;
   share: { active: boolean; allowPdf: boolean };
