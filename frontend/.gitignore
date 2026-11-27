@@ -42,3 +42,7 @@ yarn-error.*
 
 # Google service-account keys (secrets: keep them out of the repo)
 *firebase-adminsdk*.json
+
+# Build output of local native modules
+/modules/*/android/build/
+/modules/*/ios/build/

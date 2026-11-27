@@ -9,14 +9,14 @@ import { DeckGone } from '@/components/DeckGone';
 import { DeckMenu } from '@/components/DeckMenu';
 import { ShareSheet } from '@/components/ShareSheet';
 import { SlideView } from '@/components/SlideView';
-import { Toast } from '@/components/ui/Toast';
+import { Toast, type ToastMessage } from '@/components/ui/Toast';
 import { TopBar } from '@/components/ui/TopBar';
 import { useBrand } from '@/data/brand';
 import type { DeckSlide } from '@/data/clients';
 import { useDeckSlides } from '@/data/deckEdits';
 import { getTemplate, useDeckTemplate } from '@/data/templates';
 import { useDeckRoute } from '@/hooks/useDeckRoute';
-import { downloadDeckPdf } from '@/lib/deckPdf';
+import { downloadDeckPdf, downloadWithToast } from '@/lib/deckPdf';
 import { colors, shadow } from '@/theme/tokens';
 import { FadeEdges } from '@/components/FadeEdges';
 
@@ -32,7 +32,7 @@ export default function Preview() {
   const { width } = useWindowDimensions();
   const [page, setPage] = useState(1);
   const [shareOpen, setShareOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
 
   if (!deck || !client) return <DeckGone title="Preview" />;
 
@@ -49,14 +49,8 @@ export default function Preview() {
     if (next !== page) setPage(next);
   };
 
-  const download = async (ready: () => void) => {
-    try {
-      await downloadDeckPdf(client, slides, { deck: deck.title, onReady: ready, brand: b, template });
-    } catch (e) {
-      if (__DEV__) console.warn('[DriveFlow] PDF download failed:', e);
-      setToast(e instanceof Error && e.message.startsWith('Allow') ? e.message : 'Could not create the PDF');
-    }
-  };
+  const download = (ready: () => void) =>
+    downloadWithToast(() => downloadDeckPdf(client, slides, { deck: deck.title, onReady: ready, brand: b, template }), setToast);
 
   const renderPage = ({ item, index }: { item: DeckSlide; index: number }) => (
     <View style={{ borderRadius: 14, boxShadow: shadow.card }} accessible accessibilityLabel={`Page ${index + 1}: ${item.title}`}>
@@ -105,7 +99,7 @@ export default function Preview() {
       </FadeEdges>
 
       <ShareSheet deck={deck} open={shareOpen} onClose={() => setShareOpen(false)} onToast={setToast} />
-      <Toast message={toast} tone="error" onHide={() => setToast(null)} />
+      <Toast {...toast} onHide={() => setToast(null)} />
     </View>
   );
 }

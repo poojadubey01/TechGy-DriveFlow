@@ -3,6 +3,9 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
+import { SaveToDownloadsModule } from '../../modules/save-to-downloads';
+
+import type { ToastMessage } from '@/components/ui/Toast';
 import type { Asset, DeckSlide } from '@/data/clients';
 import type { TemplateId } from '@/data/templates';
 import { colors } from '@/theme/tokens';
@@ -151,15 +154,32 @@ function html(client: { name: string }, deck: string, pages: Page[], brand: PdfB
 /** PDF page size in points: 960 x 540 CSS px at 0.75 pt per px. */
 const PAGE_PT = { w: 720, h: 405 } as const;
 
+/** Where the PDF went: saved in Downloads (Android) under `name`, or handed to the share sheet. */
+export type PdfResult = { savedTo: 'downloads'; name: string; open: () => Promise<void> } | { savedTo: 'shared' };
+
 /**
- * Builds the deck as a real PDF (one 16:9 page per slide) and opens the system sheet so the
- * user can save it to Downloads/Drive/Files or send it. On web, opens the print dialog instead.
+ * Builds the deck as a real PDF (one 16:9 page per slide).
+ * - Android 10+: saves it straight into the phone's Downloads folder.
+ * - iOS and older Android: opens the share sheet, where "Save to Files" is the download.
+ * - Web: opens the print dialog.
  */
-export async function downloadDeckPdf(
+/** The PDF being made, if any (see downloadDeckPdf). */
+let pdfQueue: Promise<unknown> = Promise.resolve();
+
+export function downloadDeckPdf(...args: Parameters<typeof makeDeckPdf>): Promise<PdfResult> {
+  // Android's print engine fails ("error while writing the PDF data") when two PDFs are made at
+  // once, e.g. a second tap while the first is still running: run them one after another.
+  const job = pdfQueue.then(() => makeDeckPdf(...args));
+  pdfQueue = job.catch(() => undefined);
+  return job;
+}
+
+
+async function makeDeckPdf(
   client: { name: string },
   slides: DeckSlide[],
   { deck = 'Portfolio', onReady, brand = null, template = 'classic' }: { deck?: string; onReady?: () => void; brand?: PdfBrand; template?: TemplateId } = {},
-): Promise<void> {
+): Promise<PdfResult> {
   // Decks repeat photos: read and encode each one once, then reuse it for every slide.
   const unique = [...new Map(slides.map((s) => [s.source.id, s.source] as const)).values()];
   const uris = new Map(await Promise.all(unique.map(async (src) => [src.id, await toDataUri(src)] as const)));
@@ -168,7 +188,7 @@ export async function downloadDeckPdf(
   if (Platform.OS === 'web') {
     onReady?.();
     await printOnWeb(doc, [...uris.values()]);
-    return;
+    return { savedTo: 'shared' };
   }
   // Ask for the PDF bytes and save them in the app's own cache under a readable name. The print
   // module's own output folder can't be read by the share sheet (Expo Go: "Not allowed to read file").
@@ -182,6 +202,13 @@ export async function downloadDeckPdf(
   pdf.create();
   await pdf.write(base64, { encoding: 'base64' });
 
+  const downloads = Platform.OS === 'android' ? SaveToDownloadsModule : null;
+  if (downloads?.isAvailable) {
+    const saved = await downloads.save(pdf.uri, name, 'application/pdf');
+    onReady?.();
+    return { savedTo: 'downloads', name: saved.name, open: () => downloads.open(saved.uri, 'application/pdf') };
+  }
+
   if (!(await Sharing.isAvailableAsync())) throw new Error('Sharing is not available on this device');
   onReady?.();
   // Let the closed menu be drawn before Android's share sheet pauses the app.
@@ -191,4 +218,26 @@ export async function downloadDeckPdf(
     UTI: 'com.adobe.pdf',
     dialogTitle: `${client.name} — ${deck} (PDF)`,
   });
+  return { savedTo: 'shared' };
+}
+
+/**
+ * Runs `make` (a downloadDeckPdf call) and reports the outcome through the screen's toast:
+ * "Saved to Downloads" with Open on Android, or what went wrong.
+ */
+export async function downloadWithToast(make: () => Promise<PdfResult>, toast: (t: ToastMessage) => void) {
+  try {
+    const result = await make();
+    if (result.savedTo !== 'downloads') return;
+    toast({
+      message: 'Saved to Downloads',
+      action: {
+        label: 'Open',
+        onPress: () => void result.open().catch(() => toast({ message: 'No app on this phone opens PDFs', tone: 'error' })),
+      },
+    });
+  } catch (e) {
+    if (__DEV__) console.warn('[DriveFlow] PDF download failed:', e);
+    toast({ message: e instanceof Error && e.message.startsWith('Allow') ? e.message : 'Could not create the PDF', tone: 'error' });
+  }
 }
