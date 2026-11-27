@@ -257,7 +257,7 @@ export default function SharedDeck() {
           {showContact ? <PillButton label="Contact" onPress={contact} flex={1} compact leading={<Mail size={19} color={colors.white} strokeWidth={2.2} />} /> : null}
         </View>
       ) : null}
-      <Toast message={toast} onHide={() => setToast(null)} />
+      <Toast message={toast} tone="error" onHide={() => setToast(null)} />
     </View>
   );
 }

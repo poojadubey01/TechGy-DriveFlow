@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { type KeyboardTypeOptions, Pressable, Text, TextInput, View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 
-import type { Client } from '@/data/clients';
+import { type Client, thumb } from '@/data/clients';
 import { haptic } from '@/hooks/haptics';
 import { duration, spring } from '@/theme/motion';
 import { colors, shadow } from '@/theme/tokens';
@@ -53,7 +53,7 @@ export function Composer({ value, onChangeText, onSend, tagged, onClearTag, focu
     <View>
       {tagged && (
         <View className="mb-2 ml-2 flex-row items-center gap-2 self-start rounded-full bg-card py-1 pl-1 pr-2" style={{ boxShadow: shadow.soft }}>
-          <Image source={tagged.cover} style={{ width: 24, height: 24, borderRadius: 12 }} contentFit="cover" accessible={false} />
+          <Image source={thumb(tagged.cover)} style={{ width: 24, height: 24, borderRadius: 12 }} contentFit="cover" accessible={false} />
           <Text className="font-jk-semibold text-[13px] text-brand-deep">@{tagged.name}</Text>
           <Pressable onPress={onClearTag} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Remove ${tagged.name}`}>
             <X size={14} color={colors.muted} strokeWidth={2.2} />

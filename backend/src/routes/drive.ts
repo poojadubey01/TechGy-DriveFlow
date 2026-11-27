@@ -1,3 +1,6 @@
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
+
 import { and, asc, count, eq, isNull } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
@@ -9,6 +12,7 @@ import { PHOTO_KINDS } from '../domain/catalog.js';
 import { pickPhotos } from '../domain/slides.js';
 import { AppError, badRequest, notFound } from '../lib/errors.js';
 import { DRIVE_SCOPE } from '../services/google.js';
+import type { PhotoSize } from '../services/photoSizes.js';
 import { syncDrive } from '../services/sync.js';
 
 type DriveRow = typeof driveConnections.$inferSelect;
@@ -53,14 +57,31 @@ export function coverOf(list: readonly PhotoRow[]) {
   return list.find((p) => p.kind === 'exterior') ?? list[0] ?? null;
 }
 
-/** Streams a photo's bytes from Drive (or the mock). */
-export async function sendPhoto(ctx: Ctx, reply: FastifyReply, photo: PhotoRow, cache: string) {
+/** `?w=` on photo URLs: the width the app shows the photo at (served at the next size up). */
+export const photoQuery = z.object({ w: z.coerce.number().int().min(1).max(10_000).optional() });
+
+/**
+ * Sends a photo resized to `size` (see services/photoSizes.ts), made from the Drive original on
+ * first view. A format the resizer can't read (e.g. HEIC) is sent as the original.
+ */
+export async function sendPhoto(ctx: Ctx, reply: FastifyReply, photo: PhotoRow, cache: string, size: PhotoSize) {
   const [conn] = await ctx.db.select().from(driveConnections).where(eq(driveConnections.userId, photo.userId));
   if (!conn) throw new AppError(409, 'drive_reconnect', 'Google Drive isn’t connected, so this photo can’t be loaded.');
-  const file = await ctx.drive.sourceFor(conn).download(photo.driveFileId);
-  reply.header('Content-Type', photo.mimeType || file.contentType).header('Cache-Control', cache);
-  if (file.length) reply.header('Content-Length', String(file.length));
-  return reply.send(file.stream);
+  const source = ctx.drive.sourceFor(conn);
+  const key = `${photo.id}-${photo.driveModifiedAt?.getTime() ?? 0}`;
+  try {
+    const file = await ctx.photoSizes.file(key, size, async () => (await source.download(photo.driveFileId)).stream);
+    reply.header('Content-Type', 'image/jpeg').header('Cache-Control', cache).header('Content-Length', String((await stat(file)).size));
+    return reply.send(createReadStream(file));
+  } catch (e) {
+    // Drive errors (lost access, file gone) go to the app as they are.
+    if (e instanceof AppError) throw e;
+    reply.log.warn({ err: e, photoId: photo.id, mimeType: photo.mimeType }, 'photo could not be resized; sending the original');
+  }
+  const original = await source.download(photo.driveFileId);
+  reply.header('Content-Type', photo.mimeType || original.contentType).header('Cache-Control', cache);
+  if (original.length) reply.header('Content-Length', String(original.length));
+  return reply.send(original.stream);
 }
 
 export async function driveRoutes(app: FastifyInstance, ctx: Ctx) {

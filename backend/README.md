@@ -145,7 +145,7 @@ Photo URLs in responses are paths like `/photos/<id>/image`. The app adds the AP
 | `PATCH /clients/:id` | `{ meta }` short description |
 | `POST /clients/:id/pick-photos` | `{ choice }` ("Interiors", "the pool"…) → `{ photos, note }` |
 | `PATCH /photos/:id` | `{ kind: "exterior" \| "interior" \| "night" \| null }` |
-| `GET /photos/:id/image` | The photo's bytes |
+| `GET /photos/:id/image` | The photo as a JPEG, 1600 px on its longest side, or 320 / 800 px with `?w=`. It's resized from the Drive original on first view and kept in `PHOTO_CACHE_DIR`. |
 | **Decks** | |
 | `GET /decks?clientId=` | Your decks, newest first |
 | `POST /decks` | `{ clientId, type, slides?, title?, photoIds?, template? }` → the built deck |

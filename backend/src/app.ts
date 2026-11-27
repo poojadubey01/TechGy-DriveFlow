@@ -19,6 +19,7 @@ import { DriveService } from './services/drive/index.js';
 import { MockDriveSource } from './services/drive/mock.js';
 import { ConsoleEmail, type EmailSender, ResendEmail } from './services/email.js';
 import { type GoogleAuth, GoogleOAuth, MockGoogleAuth, RealGoogleAuth } from './services/google.js';
+import { PhotoSizes } from './services/photoSizes.js';
 import { ExpoPush, type PushSender } from './services/push.js';
 import { type Assistant, createAssistant } from './services/assistant.js';
 
@@ -60,6 +61,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     drive:
       deps.drive ??
       new DriveService(secrets, new GoogleOAuth(config.GOOGLE_OAUTH_CLIENT_ID, config.GOOGLE_OAUTH_CLIENT_SECRET), config.DEV_MOCKS ? new MockDriveSource(config.SAMPLE_PHOTOS_DIR) : null),
+    photoSizes: new PhotoSizes(config.PHOTO_CACHE_DIR),
     push: deps.push !== undefined ? deps.push : config.PUSH_ENABLED ? new ExpoPush(config.EXPO_ACCESS_TOKEN) : null,
     assistant: deps.assistant ?? createAssistant({ apiKey: config.ANTHROPIC_API_KEY, model: config.ASSISTANT_MODEL, log: app.log }),
   };

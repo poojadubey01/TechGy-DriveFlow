@@ -10,7 +10,7 @@ import { PageShell } from '@/components/PageShell';
 import { IconButton } from '@/components/ui/Button';
 import { errorMessage } from '@/api/client';
 import { renameDeck } from '@/data/app';
-import type { DeckSlide } from '@/data/clients';
+import { type DeckSlide, thumb } from '@/data/clients';
 import { resetDeck, saveDeck, useDeckSlides, useDeckSlidesLoaded } from '@/data/deckEdits';
 import { haptic } from '@/hooks/haptics';
 import { useDeckRoute } from '@/hooks/useDeckRoute';
@@ -119,7 +119,7 @@ export default function EditDeck() {
         {draft.map((s, i) => (
           <View key={s.uid} style={{ borderRadius: 20, backgroundColor: colors.card, boxShadow: shadow.soft, padding: 10, flexDirection: 'row', gap: 10 }}>
             <View style={{ width: 96, height: 54, borderRadius: 10, overflow: 'hidden' }}>
-              <Image source={s.source} style={{ width: '100%', height: '100%' }} contentFit="cover" accessible={false} />
+              <Image source={thumb(s.source)} style={{ width: '100%', height: '100%' }} contentFit="cover" accessible={false} />
               <View style={{ position: 'absolute', left: 4, top: 4, minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(18,21,42,0.55)' }}>
                 <Text className="font-jk-bold text-[11px] text-white">{i + 1}</Text>
               </View>

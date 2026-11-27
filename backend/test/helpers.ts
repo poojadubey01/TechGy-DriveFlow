@@ -1,3 +1,7 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
 import type { FastifyInstance } from 'fastify';
 
 import { buildApp } from '../src/app.js';
@@ -21,7 +25,9 @@ export type TestApp = { app: FastifyInstance; email: ConsoleEmail; mockDrive: Mo
 
 /** A full app on a fresh in-memory Postgres, with the console outbox and the mock Drive. */
 export async function makeApp(overrides: Partial<Config> = {}): Promise<TestApp> {
-  const config = loadConfig({ NODE_ENV: 'test' }, { PGLITE_DIR: 'memory', RATE_LIMIT: false, DEV_MOCKS: true, ...overrides });
+  // Each app resizes photos into its own throwaway folder.
+  const photoDir = mkdtempSync(path.join(tmpdir(), 'driveflow-photos-'));
+  const config = loadConfig({ NODE_ENV: 'test' }, { PGLITE_DIR: 'memory', PHOTO_CACHE_DIR: photoDir, RATE_LIMIT: false, DEV_MOCKS: true, ...overrides });
   const database = createDatabase({ pgliteDir: 'memory' });
   await database.migrate();
   const email = new ConsoleEmail();
@@ -36,6 +42,7 @@ export async function makeApp(overrides: Partial<Config> = {}): Promise<TestApp>
     close: async () => {
       await app.close();
       await database.close();
+      rmSync(photoDir, { recursive: true, force: true });
     },
   };
 }

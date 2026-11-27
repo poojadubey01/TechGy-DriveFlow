@@ -6,7 +6,7 @@ import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 
 import { SubmitButton } from '@/components/auth/Form';
 import { PageShell } from '@/components/PageShell';
-import { MIN_DECK_PHOTOS, useClient } from '@/data/clients';
+import { MIN_DECK_PHOTOS, thumb, useClient } from '@/data/clients';
 import { deliverPick } from '@/data/photoPick';
 import { haptic } from '@/hooks/haptics';
 import { colors } from '@/theme/tokens';
@@ -94,7 +94,7 @@ export default function Photos() {
               accessibilityLabel={`Photo ${i + 1}`}
             >
               <View style={{ width: tile, height: tile, borderRadius: 14, overflow: 'hidden', borderWidth: on ? 3 : 0, borderColor: colors.brand }}>
-                <Image source={src} style={{ width: '100%', height: '100%' }} contentFit="cover" accessible={false} />
+                <Image source={thumb(src)} style={{ width: '100%', height: '100%' }} contentFit="cover" accessible={false} />
                 {picking && (
                   <View
                     style={{

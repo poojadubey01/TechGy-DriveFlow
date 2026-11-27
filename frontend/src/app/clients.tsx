@@ -8,7 +8,7 @@ import { FilterPills, PageShell } from '@/components/PageShell';
 import { LoadFailed } from '@/components/LoadFailed';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { useDecks } from '@/data/app';
-import { type Client, loadClients, useClients, useClientsStatus } from '@/data/clients';
+import { type Client, loadClients, thumb, useClients, useClientsStatus } from '@/data/clients';
 import { colors, shadow } from '@/theme/tokens';
 
 const FILTERS = ['All', 'Villas', 'Towers', 'Communities'] as const;
@@ -31,7 +31,7 @@ function ClientRow({ c }: { c: Client }) {
       accessibilityLabel={`${c.name}, ${c.meta}, ${c.photos} photos. Open client`}
       style={{ borderRadius: 22, backgroundColor: colors.card, boxShadow: shadow.soft, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}
     >
-      <Image source={c.cover} style={{ width: 58, height: 58, borderRadius: 16 }} contentFit="cover" accessible={false} />
+      <Image source={thumb(c.cover)} style={{ width: 58, height: 58, borderRadius: 16 }} contentFit="cover" accessible={false} />
       <View style={{ flex: 1 }}>
         <Text className="font-jk-semibold text-[16px] text-ink" numberOfLines={1}>
           {c.name}

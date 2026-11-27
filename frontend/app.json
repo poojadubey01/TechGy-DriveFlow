@@ -5,6 +5,12 @@
     "owner": "techgylink",
     "scheme": "driveflow",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e9f116ee-d84a-415f-b948-4d7b721e1c70"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

@@ -38,6 +38,23 @@ export function toAsset(p: Pick<ApiPhoto, 'id' | 'url' | 'kind'> & { name?: stri
   return asset;
 }
 
+const thumbs = new WeakMap<Asset, Asset>();
+
+/**
+ * The photo at thumbnail size (320 px), for anything shown smaller than about a third of the
+ * screen. The API serves photos at 1600 px by default; Drive originals can be 40 MB.
+ * Bundled sample photos are used as they are.
+ */
+export function thumb<T extends Asset | null>(photo: T): T {
+  if (!photo || !/^https?:\/\//.test(photo.uri)) return photo;
+  let small = thumbs.get(photo);
+  if (!small) {
+    small = { ...photo, uri: `${photo.uri}${photo.uri.includes('?') ? '&' : '?'}w=320` };
+    thumbs.set(photo, small);
+  }
+  return small as T;
+}
+
 /** A slide's photo when only its id and URL are known (deck slides, client view). */
 export function slidePhoto(photoId: string, url: string): Asset {
   const known = registry.get(photoId);

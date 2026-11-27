@@ -105,7 +105,7 @@ export default function Preview() {
       </FadeEdges>
 
       <ShareSheet deck={deck} open={shareOpen} onClose={() => setShareOpen(false)} onToast={setToast} />
-      <Toast message={toast} onHide={() => setToast(null)} />
+      <Toast message={toast} tone="error" onHide={() => setToast(null)} />
     </View>
   );
 }

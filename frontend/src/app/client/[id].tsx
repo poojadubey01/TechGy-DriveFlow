@@ -11,7 +11,7 @@ import { PillButton, IconButton } from '@/components/ui/Button';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { useDecks } from '@/data/app';
 import { DeckCard } from '@/components/DeckCard';
-import { useClient, useClientsStatus } from '@/data/clients';
+import { thumb, useClient, useClientsStatus } from '@/data/clients';
 import { PageShell } from '@/components/PageShell';
 import { SubmitButton } from '@/components/auth/Form';
 import { useSession } from '@/data/session';
@@ -119,7 +119,7 @@ export default function ClientDetails() {
         <View className="mx-4 flex-row flex-wrap gap-2">
           {client.gallery.slice(0, 6).map((src, i) => (
             <PressableScale key={i} onPress={allPhotos} scaleTo={0.96} accessibilityLabel={`Photo ${i + 1}`}>
-              <Image source={src} style={{ width: tile, height: tile, borderRadius: 14 }} contentFit="cover" accessible={false} />
+              <Image source={thumb(src)} style={{ width: tile, height: tile, borderRadius: 14 }} contentFit="cover" accessible={false} />
             </PressableScale>
           ))}
         </View>
