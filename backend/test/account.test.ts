@@ -81,7 +81,7 @@ describe('support, meta and health', () => {
     const meta = (await call(t.app, 'GET', '/meta')).body;
     expect(meta.deckTypes).toEqual(['Portfolio', 'Proposal', 'Moodboard']);
     expect(meta.templates.map((x: { id: string }) => x.id)).toEqual(['classic', 'editorial', 'split', 'bold']);
-    expect(meta).toMatchObject({ slidesMin: 4, slidesMax: 40, minDeckPhotos: 3, shareBaseUrl: 'https://driveflow.app/p/' });
+    expect(meta).toMatchObject({ slidesMin: 4, slidesMax: 40, minDeckPhotos: 3, shareBaseUrl: 'https://driveflow.techgylink.com/p/' });
     expect((await call(t.app, 'GET', '/health')).body).toEqual({ ok: true, database: 'pglite' });
     const missing = await call(t.app, 'GET', '/nope');
     expect(missing.status).toBe(404);
@@ -113,7 +113,7 @@ describe('configuration', () => {
         DATABASE_URL: 'postgres://u:p@localhost:5432/driveflow',
         EMAIL_PROVIDER: 'resend',
         RESEND_API_KEY: 're_test',
-        CORS_ORIGINS: 'https://driveflow.app',
+        CORS_ORIGINS: 'https://driveflow.techgylink.com',
         GOOGLE_CLIENT_IDS: 'web.apps.googleusercontent.com',
         GOOGLE_OAUTH_CLIENT_ID: 'web.apps.googleusercontent.com',
         GOOGLE_OAUTH_CLIENT_SECRET: 'secret',
@@ -129,7 +129,7 @@ describe('configuration', () => {
       DATABASE_URL: 'postgres://u:p@localhost:5432/driveflow',
       EMAIL_PROVIDER: 'resend',
       RESEND_API_KEY: 're_test',
-      CORS_ORIGINS: 'https://driveflow.app',
+      CORS_ORIGINS: 'https://driveflow.techgylink.com',
     } as const;
     expect(() => loadConfig(safe)).toThrow(/GOOGLE_CLIENT_IDS is required/);
     expect(() => loadConfig({ ...safe, GOOGLE_CLIENT_IDS: 'web.apps.googleusercontent.com' })).toThrow(/GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET/);

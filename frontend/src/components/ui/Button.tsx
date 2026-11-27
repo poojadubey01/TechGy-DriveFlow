@@ -14,10 +14,12 @@ type PillButtonProps = {
   disabled?: boolean;
   /** Flex weight when placed in a row. */
   flex?: number;
+  /** Less side padding, for two buttons side by side on a narrow phone. */
+  compact?: boolean;
 };
 
 /** Big 60 px pill. Primary = brand blue with a soft blue glow; secondary = white. */
-export function PillButton({ label, onPress, variant = 'primary', leading, disabled, flex }: PillButtonProps) {
+export function PillButton({ label, onPress, variant = 'primary', leading, disabled, flex, compact }: PillButtonProps) {
   const primary = variant === 'primary';
   return (
     <PressableScale
@@ -26,7 +28,7 @@ export function PillButton({ label, onPress, variant = 'primary', leading, disab
       feedback={primary ? 'press' : 'tap'}
       accessibilityLabel={label}
       containerStyle={flex ? { flex } : undefined}
-      className={`h-[60px] flex-row items-center justify-center gap-2.5 rounded-full px-6 ${primary ? 'bg-brand' : 'bg-card'}`}
+      className={`h-[60px] flex-row items-center justify-center gap-2.5 rounded-full ${compact ? 'px-4' : 'px-6'} ${primary ? 'bg-brand' : 'bg-card'}`}
       style={{ boxShadow: primary ? shadow.brand : shadow.card }}
     >
       {leading}

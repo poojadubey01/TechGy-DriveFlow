@@ -37,7 +37,7 @@ function schema(env: NodeJS.ProcessEnv) {
     /** Public address of this API (used in links inside emails and logs). */
     API_PUBLIC_URL: z.string().url().default('http://localhost:4000'),
     /** Share links are this + the deck's share code. */
-    SHARE_BASE_URL: z.string().url().default('https://driveflow.app/p/'),
+    SHARE_BASE_URL: z.string().url().default('https://driveflow.techgylink.com/p/'),
     /** Browser origins allowed to call the API (web app, share-link site). Empty = any origin outside production. */
     CORS_ORIGINS: list,
     /** Development stand-ins: mock Google sign-in, mock Drive, /dev routes. Never on in production. */
@@ -58,7 +58,7 @@ function schema(env: NodeJS.ProcessEnv) {
     /** 32 random bytes, base64. Encrypts Google tokens and signs email codes. */
     TOKEN_ENCRYPTION_KEY: z.string().optional(),
     EMAIL_PROVIDER: z.enum(['console', 'resend']).default('console'),
-    EMAIL_FROM: z.string().default('DriveFlow <no-reply@driveflow.app>'),
+    EMAIL_FROM: z.string().default('DriveFlow <no-reply@driveflow.techgylink.com>'),
     RESEND_API_KEY: z.string().optional(),
     /** Where Help-screen feedback is emailed (optional; it is always saved in the database). */
     SUPPORT_EMAIL: z.string().email().optional(),

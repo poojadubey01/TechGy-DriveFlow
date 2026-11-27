@@ -5,7 +5,7 @@ const API_PORT = 4000;
 
 /**
  * Where the DriveFlow API lives.
- * - Set EXPO_PUBLIC_API_URL (e.g. https://api.driveflow.app) for real builds.
+ * - Set EXPO_PUBLIC_API_URL (e.g. https://api.driveflow.techgylink.com) for real builds.
  * - In development it uses the same computer that serves the app (the Metro host), port 4000,
  *   so a phone, the emulator and the browser all reach the API on your PC without setup.
  */

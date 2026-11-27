@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.techgylink.driveflow",
       "associatedDomains": [
-        "applinks:driveflow.app"
+        "applinks:driveflow.techgylink.com"
       ]
     },
     "android": {
@@ -39,7 +39,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "driveflow.app",
+              "host": "driveflow.techgylink.com",
               "pathPrefix": "/p/"
             }
           ],
@@ -77,6 +77,7 @@
       ],
       "expo-sharing",
       "expo-asset",
+      "./plugins/withDebugKeystore",
       [
         "expo-secure-store",
         {

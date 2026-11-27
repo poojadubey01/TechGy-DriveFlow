@@ -23,7 +23,7 @@ describe('building decks', () => {
     expect(d).toMatchObject({ title: 'Luxury villa portfolio', type: 'Portfolio', template: 'classic', slides: 12, builtSlides: 12, edited: false, opens: 0 });
     expect(d.client).toMatchObject({ name: 'Highrize Villas', meta: 'Luxury villas' });
     expect(d.share.id).toMatch(/^[a-z2-9]{12}$/);
-    expect(d.share.url).toBe(`https://driveflow.app/p/${d.share.id}`);
+    expect(d.share.url).toBe(`https://driveflow.techgylink.com/p/${d.share.id}`);
     expect(d.share).toMatchObject({ active: true, allowPdf: true });
     expect(d.slideList).toHaveLength(12);
     expect(d.slideList[0].title).toBe('Luxury villa portfolio');
