@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, View } from 'react-native';
 
-import type { Client } from '@/data/clients';
+import { type Client, thumb } from '@/data/clients';
 import { cardGradients, shadow } from '@/theme/tokens';
 
 import { PressableScale } from './ui/PressableScale';
@@ -25,7 +25,7 @@ export function ClientCard({ client, index, onPress }: Props) {
         end={{ x: 1, y: 0.8 }}
         style={{ height: 78, borderRadius: 24, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }}
       >
-        <Image source={client.cover} contentFit="cover" transition={250} style={{ width: 50, height: 50, borderRadius: 14 }} accessible={false} />
+        <Image source={thumb(client.cover)} contentFit="cover" transition={250} style={{ width: 50, height: 50, borderRadius: 14 }} accessible={false} />
         <View className="flex-1 gap-0.5">
           <Text className="font-jk-semibold text-[16px] text-white" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
             {client.name}

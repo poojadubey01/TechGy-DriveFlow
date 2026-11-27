@@ -32,6 +32,7 @@ import {
   SLIDES_MAX,
   SLIDES_MIN,
   SAMPLE_PHOTO,
+  thumb,
   typedSlides,
   useClients,
 } from '@/data/clients';
@@ -453,7 +454,7 @@ export default function Chat() {
                         <View className="mt-3.5 flex-row flex-wrap gap-2">
                           {m.client.gallery.slice(0, 3).map((src, i) => (
                             <Animated.View key={i}>
-                              <Image source={src} style={{ width: 56, height: 56, borderRadius: 14 }} contentFit="cover" accessible={false} />
+                              <Image source={thumb(src)} style={{ width: 56, height: 56, borderRadius: 14 }} contentFit="cover" accessible={false} />
                             </Animated.View>
                           ))}
                           <PressableScale
@@ -570,7 +571,7 @@ export default function Chat() {
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                         {kept.map((src, i) => (
                           <View key={src.id} style={{ width: tile, height: tile, borderRadius: 14, overflow: 'hidden' }}>
-                            <Image source={src} style={{ width: '100%', height: '100%' }} contentFit="cover" accessible={false} />
+                            <Image source={thumb(src)} style={{ width: '100%', height: '100%' }} contentFit="cover" accessible={false} />
                             <View style={{ position: 'absolute', left: 6, top: 6, minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(18,21,42,0.55)' }}>
                               <Text className="font-jk-bold text-[11px] text-white">{i + 1}</Text>
                             </View>
@@ -591,7 +592,7 @@ export default function Chat() {
                             {removed.map((src, i) => (
                               <Pressable key={src.id} onPress={() => restorePhoto(src)} disabled={!active} accessibilityRole="button" accessibilityLabel={`Put back removed photo ${i + 1}`}>
                                 <View style={{ width: 52, height: 52, borderRadius: 12, overflow: 'hidden' }}>
-                                  <Image source={src} style={{ width: '100%', height: '100%', opacity: 0.45 }} contentFit="cover" accessible={false} />
+                                  <Image source={thumb(src)} style={{ width: '100%', height: '100%', opacity: 0.45 }} contentFit="cover" accessible={false} />
                                   {active ? (
                                     <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
                                       <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white }}>

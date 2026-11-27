@@ -19,6 +19,7 @@ import { Toast } from '@/components/ui/Toast';
 import { TopBar } from '@/components/ui/TopBar';
 
 import { useBrand } from '@/data/brand';
+import { thumb } from '@/data/clients';
 import { useDeckSlides } from '@/data/deckEdits';
 import { getTemplate, useDeckTemplate } from '@/data/templates';
 import { useDeckRoute } from '@/hooks/useDeckRoute';
@@ -134,7 +135,7 @@ export default function Ready() {
         <View className="mt-3.5 flex-row gap-2">
           {thumbs.map((s, i) => (
             <View key={i} style={{ flex: 1 }}>
-              <Image source={s.source} style={{ height: 62, borderRadius: 14 }} contentFit="cover" accessible={false} />
+              <Image source={thumb(s.source)} style={{ height: 62, borderRadius: 14 }} contentFit="cover" accessible={false} />
             </View>
           ))}
           <PressableScale
@@ -169,7 +170,7 @@ export default function Ready() {
         <PillButton label="Share with client" flex={1.4} onPress={() => setShareOpen(true)} />
       </View>
       <ShareSheet deck={deck} open={shareOpen} onClose={() => setShareOpen(false)} onToast={setToast} />
-      <Toast message={toast} onHide={() => setToast(null)} />
+      <Toast message={toast} tone="error" onHide={() => setToast(null)} />
     </View>
   );
 }

@@ -4,7 +4,7 @@ import { Check } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 import Animated, { FadeOut, ReduceMotion } from 'react-native-reanimated';
 
-import type { Client } from '@/data/clients';
+import { type Client, thumb } from '@/data/clients';
 import { enter } from '@/theme/motion';
 import { colors, shadow } from '@/theme/tokens';
 
@@ -42,7 +42,7 @@ export function MentionSheet({ matches, highlightId, onPick }: Props) {
                     end={{ x: 1, y: 0.7 }}
                     style={{ height: 64, borderRadius: 20, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}
                   >
-                    <Image source={c.cover} style={{ width: 44, height: 44, borderRadius: 12 }} contentFit="cover" accessible={false} />
+                    <Image source={thumb(c.cover)} style={{ width: 44, height: 44, borderRadius: 12 }} contentFit="cover" accessible={false} />
                     <View className="flex-1">
                       <Text className="font-jk-semibold text-[15px] text-white">{c.name}</Text>
                       <Text className="font-jk text-[12px] text-white/75">
@@ -55,7 +55,7 @@ export function MentionSheet({ matches, highlightId, onPick }: Props) {
                   </LinearGradient>
                 ) : (
                   <View className="h-16 flex-row items-center gap-3 px-3">
-                    <Image source={c.cover} style={{ width: 44, height: 44, borderRadius: 12 }} contentFit="cover" accessible={false} />
+                    <Image source={thumb(c.cover)} style={{ width: 44, height: 44, borderRadius: 12 }} contentFit="cover" accessible={false} />
                     <View className="flex-1">
                       <Text className="font-jk-semibold text-[15px] text-ink">{c.name}</Text>
                       <Text className="font-jk text-[12px] text-muted">

@@ -4,7 +4,7 @@ import { Check } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { Extrapolation, interpolate, type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
-import type { Asset } from '@/data/clients';
+import { type Asset, thumb } from '@/data/clients';
 import { colors } from '@/theme/tokens';
 
 type Props = {
@@ -43,7 +43,7 @@ function Tile({ index, slides, progress, photo }: { index: number; slides: numbe
         </View>
       </Animated.View>
       <Animated.View style={done}>
-        <Image source={photo} style={styles.fill} contentFit="cover" transition={0} accessible={false} />
+        <Image source={thumb(photo)} style={styles.fill} contentFit="cover" transition={0} accessible={false} />
         <View style={styles.tick}>
           <Check size={10} color={colors.brandDeep} strokeWidth={3.4} />
         </View>
