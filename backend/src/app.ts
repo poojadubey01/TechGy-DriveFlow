@@ -61,7 +61,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     drive:
       deps.drive ??
       new DriveService(secrets, new GoogleOAuth(config.GOOGLE_OAUTH_CLIENT_ID, config.GOOGLE_OAUTH_CLIENT_SECRET), config.DEV_MOCKS ? new MockDriveSource(config.SAMPLE_PHOTOS_DIR) : null),
-    photoSizes: new PhotoSizes(config.PHOTO_CACHE_DIR),
+    photoSizes: new PhotoSizes(config.PHOTO_CACHE_DIR, 2, (key, err) => app.log.warn({ err, key }, 'could not prepare photo sizes')),
     push: deps.push !== undefined ? deps.push : config.PUSH_ENABLED ? new ExpoPush(config.EXPO_ACCESS_TOKEN) : null,
     assistant: deps.assistant ?? createAssistant({ apiKey: config.ANTHROPIC_API_KEY, model: config.ASSISTANT_MODEL, log: app.log }),
   };

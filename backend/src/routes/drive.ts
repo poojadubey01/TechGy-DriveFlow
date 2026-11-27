@@ -12,8 +12,8 @@ import { PHOTO_KINDS } from '../domain/catalog.js';
 import { pickPhotos } from '../domain/slides.js';
 import { AppError, badRequest, notFound } from '../lib/errors.js';
 import { DRIVE_SCOPE } from '../services/google.js';
-import type { PhotoSize } from '../services/photoSizes.js';
-import { syncDrive } from '../services/sync.js';
+import { type PhotoSize, photoKey } from '../services/photoSizes.js';
+import { syncDrive, warmPhotos } from '../services/sync.js';
 
 type DriveRow = typeof driveConnections.$inferSelect;
 type PhotoRow = typeof photos.$inferSelect;
@@ -68,9 +68,8 @@ export async function sendPhoto(ctx: Ctx, reply: FastifyReply, photo: PhotoRow, 
   const [conn] = await ctx.db.select().from(driveConnections).where(eq(driveConnections.userId, photo.userId));
   if (!conn) throw new AppError(409, 'drive_reconnect', 'Google Drive isn’t connected, so this photo can’t be loaded.');
   const source = ctx.drive.sourceFor(conn);
-  const key = `${photo.id}-${photo.driveModifiedAt?.getTime() ?? 0}`;
   try {
-    const file = await ctx.photoSizes.file(key, size, async () => (await source.download(photo.driveFileId)).stream);
+    const file = await ctx.photoSizes.file(photoKey(photo), size, async () => (await source.download(photo.driveFileId)).stream);
     reply.header('Content-Type', 'image/jpeg').header('Cache-Control', cache).header('Content-Length', String((await stat(file)).size));
     return reply.send(createReadStream(file));
   } catch (e) {
@@ -187,7 +186,9 @@ export async function driveRoutes(app: FastifyInstance, ctx: Ctx) {
     const { user } = me(req);
     const conn = await connection(user.id);
     if (!conn.folderId) throw badRequest('drive_folder_missing', 'Choose your projects folder first.');
-    const result = await syncDrive(ctx, user.id, ctx.drive.sourceFor(conn), { id: conn.folderId, name: conn.folderName ?? 'Drive' }, !conn.lastSyncAt);
+    const source = ctx.drive.sourceFor(conn);
+    const result = await syncDrive(ctx, user.id, source, { id: conn.folderId, name: conn.folderName ?? 'Drive' }, !conn.lastSyncAt);
+    await warmPhotos(ctx, user.id, source);
     return { result, drive: await driveState(db, user.id) };
   });
 
