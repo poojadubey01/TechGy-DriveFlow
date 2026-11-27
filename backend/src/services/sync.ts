@@ -1,9 +1,11 @@
-import { and, eq, inArray, isNull, notInArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, notInArray } from 'drizzle-orm';
 
 import { clients, driveConnections, photos } from '../db/schema.js';
 import { kindFromText } from '../domain/slides.js';
+import type { Db } from '../db/client.js';
 import type { DriveSource } from './drive/index.js';
 import { notify, type NotifyDeps } from './notify.js';
+import { photoKey, type PhotoSizes } from './photoSizes.js';
 
 export type SyncResult = { clients: number; photos: number; newPhotos: number };
 
@@ -95,4 +97,17 @@ export async function syncDrive(deps: NotifyDeps, userId: string, source: DriveS
     });
   }
   return result;
+}
+
+/**
+ * After a sync: resizes the user's photos that aren't ready yet, in the background and in Drive
+ * order, so they open quickly the first time.
+ */
+export async function warmPhotos(deps: { db: Db; photoSizes: PhotoSizes }, userId: string, source: DriveSource) {
+  const list = await deps.db
+    .select()
+    .from(photos)
+    .where(and(eq(photos.userId, userId), isNull(photos.removedAt)))
+    .orderBy(asc(photos.clientId), asc(photos.position));
+  for (const photo of list) deps.photoSizes.warm(photoKey(photo), async () => (await source.download(photo.driveFileId)).stream);
 }

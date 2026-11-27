@@ -3,7 +3,7 @@ import type { FastifyBaseLogger } from 'fastify';
 
 import type { Ctx } from '../context.js';
 import { driveConnections } from '../db/schema.js';
-import { syncDrive } from './sync.js';
+import { syncDrive, warmPhotos } from './sync.js';
 
 /**
  * Background Drive sync: every connected Drive whose folder hasn't been synced for `intervalMin`
@@ -21,7 +21,9 @@ export async function syncDue(ctx: Ctx, intervalMin: number, opts: { limit?: num
   let synced = 0;
   for (const conn of due) {
     try {
-      await syncDrive(ctx, conn.userId, ctx.drive.sourceFor(conn), { id: conn.folderId!, name: conn.folderName ?? 'Drive' }, !conn.lastSyncAt);
+      const source = ctx.drive.sourceFor(conn);
+      await syncDrive(ctx, conn.userId, source, { id: conn.folderId!, name: conn.folderName ?? 'Drive' }, !conn.lastSyncAt);
+      await warmPhotos(ctx, conn.userId, source);
       synced++;
     } catch (err) {
       opts.log?.warn({ err, userId: conn.userId }, 'Background Drive sync failed');
