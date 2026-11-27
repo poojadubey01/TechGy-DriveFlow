@@ -48,6 +48,18 @@ npx expo run:android
    The Web client ID is used on both platforms (Google issues the ID token and the Drive code for it). The iOS client ID is only needed for iOS builds; `app.config.ts` turns it into the URL scheme Google returns through.
 3. Rebuild the app: `npx expo run:android` (or `run:ios`). Native Google sign-in doesn't work in Expo Go.
 
+### Builds and over-the-air updates
+
+EAS builds use the `preview` (tester APK) and `production` (store) profiles in `eas.json`. Each profile reads its `EXPO_PUBLIC_*` values from that EAS environment.
+
+- **New build:** `npx eas-cli build -p android --profile preview`. Testers install it from the link EAS gives.
+- **Update installed apps:** run `npx eas-cli update --channel preview --environment preview --message "What changed"`. It works for JavaScript and asset changes only (screens, text, logic, images).
+  - Apps download the update in the background and use it from their next launch.
+  - Always pass `--environment`, so the update gets that environment's API URL and Google IDs.
+- **Native changes need a new build.** That means new native libraries, permissions, the icon, or `app.json` settings such as links.
+  - `runtimeVersion` uses the `fingerprint` policy: an update only reaches builds whose native code matches.
+  - An update made after a native change simply isn't offered to older builds.
+
 ## Screens
 
 Motion is kept deliberate: one signature moment per screen, plus motion that answers your touch. Nothing loops in the background except the welcome glow.
